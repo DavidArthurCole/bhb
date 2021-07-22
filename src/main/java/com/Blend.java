@@ -8,6 +8,10 @@ public class Blend {
 
     protected static Scanner scanner = new Scanner(System.in);
 
+    public static String padWithZeros(String inputString){
+        return String.format("%1$" + 2 + "s", inputString).replace(' ', '0');
+    }
+
     public static String blendTwo(String hexOne, String hexTwo, String input){
 
         //Output will be appended over time
@@ -22,50 +26,21 @@ public class Blend {
         float hexTwoGVal = Integer.parseInt(hexTwo.substring(2, 4),16);
         float hexTwoBVal = Integer.parseInt(hexTwo.substring(4, 6),16);
 
-        //Adjusts the length so that steps are calculated with no spaces
-        int adjLength = 0;
-        for(int i = 0; i < input.length(); i++){
-            if(!input.substring(i, i+1).equals(" ")) adjLength++;
-        }
-
-        //Calculates the amount of steps to take
-        float steps = (adjLength - 1);
-
-        //Vars for holding result colors
-        float resRed;
-        float resGreen;
-        float resBlue;
-
         //Loop through each step
-        for(float j = 0; j <= steps; j++){
+        for(float j = 0; j < input.length(); j++){
 
             //Calculate what percentage of the color should be faded
-            float percent = (j / steps);
+            float percent = (j / input.length());
 
-            //Add that fade to the result color
-            resRed = hexOneRVal + Math.round(percent * (hexTwoRVal - hexOneRVal));
-            resGreen = hexOneGVal + Math.round(percent * (hexTwoGVal - hexOneGVal));
-            resBlue = hexOneBVal + Math.round(percent * (hexTwoBVal - hexOneBVal));
+            //Create the hex string by:
+            // - Adding the fade to each the R, G, and B values
+            // - Padding each with 0s to make them two chars wide
+            // - Combining the three two-wide strings into a six char string
+            String hexToAdd = padWithZeros(Integer.toHexString((int)(hexOneRVal + Math.round(percent * (hexTwoRVal - hexOneRVal)))))
+            + padWithZeros(Integer.toHexString((int)(hexOneGVal + Math.round(percent * (hexTwoGVal - hexOneGVal)))))
+            + padWithZeros(Integer.toHexString((int)(hexOneBVal + Math.round(percent * (hexTwoBVal - hexOneBVal)))));
 
-            //Add leading zeros to all gex values
-            StringBuilder resRHex = new StringBuilder(Integer.toHexString((int)resRed));
-            while(resRHex.length() < 2) resRHex.insert(0, "0");
-
-            StringBuilder resBHex = new StringBuilder(Integer.toHexString((int)resBlue));
-            while(resBHex.length() < 2) resBHex.insert(0, "0");
-
-            StringBuilder resGHex = new StringBuilder(Integer.toHexString((int)resGreen));
-            while(resGHex.length() < 2) resGHex.insert(0, "0");
-
-            StringBuilder hexToAdd = new StringBuilder(resRHex.toString() + resGHex.toString() + resBHex.toString());
-            while(hexToAdd.length() < 6) hexToAdd.insert(0, "0"); //This should never be reached...
-
-            //If the character isn't a space, append the code and the value
-            if(input.charAt((int)j) != ' '){
-                output.append("&#" + hexToAdd.toString().toUpperCase() + Character.toString(input.charAt((int)j)));
-            }
-            //Else, append a space
-            else output.append(" ");
+            output.append("&#" + hexToAdd.toUpperCase() + Character.toString(input.charAt((int)j)));
         }
 
         return output.toString();

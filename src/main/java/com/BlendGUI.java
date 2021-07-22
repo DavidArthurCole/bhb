@@ -12,6 +12,7 @@ import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextFormatter;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
@@ -322,7 +323,13 @@ public class BlendGUI extends Application {
         Label codeId = new Label("Code " + id + ": ");
         Label codeColorPreview = makePreviewLabel();
         LimitedTextField codeField = makeTextField(codeColorPreview, codeFields, id, userInField, previewLabels);
+        codeField.setOnInputMethodTextChanged(e -> codeField.setText(codeField.getText().toUpperCase()));
         codeField.setRestrict("[a-fA-F0-9]");
+
+        codeField.setTextFormatter(new TextFormatter<>(change -> {
+            change.setText(change.getText().toUpperCase());
+            return change;
+        }));
 
         codeId.setOnMouseClicked(e -> codeField.setText(generateRandomHex()));
 
