@@ -1,6 +1,5 @@
 .vscode/*
 target/*
-!colorscheme-1-jfx.jar
 src/test/*
 pom.xml
 .classpath
