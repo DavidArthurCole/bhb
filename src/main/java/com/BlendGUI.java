@@ -47,8 +47,9 @@ import java.awt.datatransfer.Clipboard;
 
 public class BlendGUI extends Application {
 
-    Logger log = Logger.getLogger(BlendGUI.class.getSimpleName());
+    String currentTheme = "LIGHT";
 
+    Logger log = Logger.getLogger(BlendGUI.class.getSimpleName());
     String defaultFont = "Arial";
 
     protected static String currentNick;
@@ -147,9 +148,7 @@ public class BlendGUI extends Application {
         Menu menuFile = new Menu("File");
 
         MenuItem saveItem = new MenuItem("Save");
-        saveItem.setOnAction( e -> {
-            trySave(stage, codeFields);
-        });
+        saveItem.setOnAction( e -> trySave(stage, codeFields));
 
         MenuItem loadItem = new MenuItem("Load");
         loadItem.setOnAction( e -> {
@@ -166,7 +165,7 @@ public class BlendGUI extends Application {
 
 
         // Menu - Edit
-        Menu menuEdit = new Menu("Tools");
+        Menu menuTools = new Menu("Tools");
 
         MenuItem copyItem = new MenuItem("Copy To Clipboard");
         copyItem.setOnAction( e -> {
@@ -177,9 +176,11 @@ public class BlendGUI extends Application {
             }
         });
 
-        menuEdit.getItems().add(copyItem);
+        MenuItem programTheme = new MenuItem("Dark Mode");
 
-        menuBar.getMenus().addAll(menuFile, menuEdit);
+        menuTools.getItems().addAll(copyItem, programTheme);
+
+        menuBar.getMenus().addAll(menuFile, menuTools);
 
         VBox mainBox = new VBox();
 
@@ -296,11 +297,12 @@ public class BlendGUI extends Application {
 
         mainBox.getChildren().addAll(codesAndPicker, nickInput, previewCopyPane);
 
-        VBox emptyBox = new VBox();
-        emptyBox.setMaxSize(0, 0);
-
         Scene mainScene = new Scene(mainBox);
         ((VBox)mainScene.getRoot()).getChildren().addAll(menuBar);
+
+        programTheme.setOnAction(e -> {
+            changeTheme(programTheme, mainScene);
+        });
 
         menuBar.toBack();
         mainBox.toFront();
@@ -478,6 +480,29 @@ public class BlendGUI extends Application {
         for (int i = 0; i < 6; i++) rndHex += "ABCDEF0123456789".charAt(random.nextInt(16));
 
         return rndHex;
+    }
+
+    public void changeTheme(MenuItem programTheme, Scene mainScene){
+        
+        if(currentTheme.equals("LIGHT")){
+            goDark(mainScene, programTheme);
+            currentTheme = "DARK";
+        }
+        else{
+           goLight(mainScene, programTheme);
+           currentTheme = "LIGHT"; 
+        }
+        
+    }
+
+    public void goDark(Scene mainScene, MenuItem programTheme){
+        mainScene.getStylesheets().add(getClass().getResource("dark.css").toString());
+        programTheme.setText("Light Mode");
+    }
+
+    public void goLight(Scene mainScene, MenuItem programTheme){
+        mainScene.getStylesheets().remove(getClass().getResource("dark.css").toString());
+        programTheme.setText("Dark Mode");
     }
 
     public static void main(String[] args) {
