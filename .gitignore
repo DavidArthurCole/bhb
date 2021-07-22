@@ -1,0 +1,6 @@
+.vscode/*
+target/*
+pom.xml
+.classpath
+.project
+.settings/*
