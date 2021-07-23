@@ -307,7 +307,7 @@ public class BlendGUI extends Application {
         ((VBox)mainScene.getRoot()).getChildren().addAll(menuBar);
 
         programTheme.setOnAction(e -> {
-            changeTheme(programTheme, mainScene, previewColorLabels);
+            changeTheme(programTheme, mainScene, previewColorLabels, codeFields);
         });
 
         menuBar.toBack();
@@ -495,32 +495,40 @@ public class BlendGUI extends Application {
         return rndHex.toString();
     }
 
-    public void changeTheme(MenuItem programTheme, Scene mainScene, Label[] labelColorPreviews){
+    public void changeTheme(MenuItem programTheme, Scene mainScene, Label[] labelColorPreviews, LimitedTextField[] codeFields){
         
         if(currentTheme.equals("LIGHT")){
-            goDark(mainScene, programTheme, labelColorPreviews);
+            goDark(mainScene, programTheme, labelColorPreviews, codeFields);
             currentTheme = "DARK";
         }
         else{
-           goLight(mainScene, programTheme, labelColorPreviews);
+           goLight(mainScene, programTheme, labelColorPreviews, codeFields);
            currentTheme = "LIGHT"; 
         }
         
     }
 
-    public void goDark(Scene mainScene, MenuItem programTheme, Label[] labelColorPreviews){
+    public void goDark(Scene mainScene, MenuItem programTheme, Label[] labelColorPreviews, LimitedTextField[] codeFields){
         mainScene.getStylesheets().add(getClass().getResource("dark.css").toString());
         programTheme.setText("Light Mode");
-        for(Label l : labelColorPreviews) l.setBackground(new Background(new BackgroundFill(Color.rgb(92, 100, 108), CornerRadii.EMPTY, Insets.EMPTY)));
+        for(int i = 0; i <= 5; i++){
+            if(codeFields[i].getText().equals("")){
+                labelColorPreviews[i].setBackground(new Background(new BackgroundFill(Color.rgb(92, 100, 108), CornerRadii.EMPTY, Insets.EMPTY)));
+            }
+        }
     }
 
-    public void goLight(Scene mainScene, MenuItem programTheme, Label[] labelColorPreviews){
+    public void goLight(Scene mainScene, MenuItem programTheme, Label[] labelColorPreviews, LimitedTextField[] codeFields){
         mainScene.getStylesheets().remove(getClass().getResource("dark.css").toString());
         programTheme.setText("Dark Mode");
-        for(Label l : labelColorPreviews) l.setBackground(new Background(new BackgroundFill(Color.rgb(
-            Integer.parseInt("F2",16),
-            Integer.parseInt("F2",16),
-            Integer.parseInt("F2",16)), CornerRadii.EMPTY, Insets.EMPTY)));
+        for(int i = 0; i <=5; i++){
+            if(codeFields[i].getText().equals("")){
+                labelColorPreviews[i].setBackground(new Background(new BackgroundFill(Color.rgb(
+                    Integer.parseInt("F2",16),
+                    Integer.parseInt("F2",16),
+                    Integer.parseInt("F2",16)), CornerRadii.EMPTY, Insets.EMPTY)));
+            }
+        }
     }
 
     public static void main(String[] args) {

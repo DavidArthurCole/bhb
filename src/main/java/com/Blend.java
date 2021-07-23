@@ -26,14 +26,14 @@ public class Blend {
         float hexTwoGVal = Integer.parseInt(hexTwo.substring(2, 4),16);
         float hexTwoBVal = Integer.parseInt(hexTwo.substring(4, 6),16);
 
-        //Adjusts the length so that steps are calculated with no spaces
+/*         //Adjusts the length so that steps are calculated with no spaces
         int adjLength = 0;
         for(int i = 0; i < input.length(); i++){
             if(!input.substring(i, i+1).equals(" ")) adjLength++;
-        }
+        } */
 
         //Calculates the amount of steps to take
-        float steps = (adjLength - 1);
+        float steps = (input.length() - 1);
 
         //Vars for holding result colors
         float resRed;
