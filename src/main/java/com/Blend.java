@@ -26,46 +26,19 @@ public class Blend {
         float hexTwoGVal = Integer.parseInt(hexTwo.substring(2, 4),16);
         float hexTwoBVal = Integer.parseInt(hexTwo.substring(4, 6),16);
 
-/*         //Adjusts the length so that steps are calculated with no spaces
-        int adjLength = 0;
-        for(int i = 0; i < input.length(); i++){
-            if(!input.substring(i, i+1).equals(" ")) adjLength++;
-        } */
-
-        //Calculates the amount of steps to take
-        float steps = (input.length() - 1);
-
-        //Vars for holding result colors
-        float resRed;
-        float resGreen;
-        float resBlue;
-
         //Loop through each step
-        for(float j = 0; j <= steps; j++){
+        for(float j = 0; j <= (input.length() - 1); ++j){
 
             //Calculate what percentage of the color should be faded
-            float percent = (j / steps);
+            float percent = (j / (input.length() - 1));
 
-            //Add that fade to the result color
-            resRed = hexOneRVal + Math.round(percent * (hexTwoRVal - hexOneRVal));
-            resGreen = hexOneGVal + Math.round(percent * (hexTwoGVal - hexOneGVal));
-            resBlue = hexOneBVal + Math.round(percent * (hexTwoBVal - hexOneBVal));
+            //Combine into one
+            StringBuilder hexToAdd = new StringBuilder(
+               padWithZeros(Integer.toHexString((int)hexOneRVal + Math.round(percent * (hexTwoRVal - hexOneRVal))))
+             + padWithZeros(Integer.toHexString((int)hexOneGVal + Math.round(percent * (hexTwoGVal - hexOneGVal))))
+             + padWithZeros(Integer.toHexString((int)hexOneBVal + Math.round(percent * (hexTwoBVal - hexOneBVal)))));
 
-            //Add leading zeros to all gex values
-            StringBuilder resRHex = new StringBuilder(padWithZeros(Integer.toHexString((int)resRed)));
-
-            StringBuilder resBHex = new StringBuilder(padWithZeros(Integer.toHexString((int)resBlue)));
-
-            StringBuilder resGHex = new StringBuilder(padWithZeros(Integer.toHexString((int)resGreen)));
-
-            StringBuilder hexToAdd = new StringBuilder(resRHex.toString() + resGHex.toString() + resBHex.toString());
-
-            //If the character isn't a space, append the code and the value
-            if(input.charAt((int)j) != ' '){
-                output.append("&#" + hexToAdd.toString().toUpperCase() + Character.toString(input.charAt((int)j)));
-            }
-            //Else, append a space
-            else output.append(" ");
+            output.append("&#" + hexToAdd.toString().toUpperCase() + Character.toString(input.charAt((int)j)));
         }
 
         return output.toString();
