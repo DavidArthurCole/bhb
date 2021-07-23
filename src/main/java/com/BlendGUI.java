@@ -47,7 +47,7 @@ import java.awt.datatransfer.Clipboard;
 
 public class BlendGUI extends Application {
 
-    String currentTheme = "LIGHT";
+    String currentTheme = "DARK";
 
     Logger log = Logger.getLogger(BlendGUI.class.getSimpleName());
     String defaultFont = "Arial";
@@ -176,7 +176,7 @@ public class BlendGUI extends Application {
             }
         });
 
-        MenuItem programTheme = new MenuItem("Dark Mode");
+        MenuItem programTheme = new MenuItem("Light Mode");
 
         menuTools.getItems().addAll(copyItem, programTheme);
 
@@ -309,9 +309,9 @@ public class BlendGUI extends Application {
 
         stage.setScene(mainScene);
         stage.setTitle("Blazin's Hex Blender");
+
         stage.show();
         stage.setResizable(false);
-
     }
 
     public Label makePreviewLabel(){ 
