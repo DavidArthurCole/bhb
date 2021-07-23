@@ -52,6 +52,8 @@ public class BlendGUI extends Application {
     Logger log = Logger.getLogger(BlendGUI.class.getSimpleName());
     String defaultFont = "Arial";
 
+    Label[] previewColorLabels = new Label[6];
+
     protected static String currentNick;
     protected LimitedTextField lastField;
 
@@ -305,7 +307,7 @@ public class BlendGUI extends Application {
         ((VBox)mainScene.getRoot()).getChildren().addAll(menuBar);
 
         programTheme.setOnAction(e -> {
-            changeTheme(programTheme, mainScene);
+            changeTheme(programTheme, mainScene, previewColorLabels);
         });
 
         menuBar.toBack();
@@ -328,6 +330,7 @@ public class BlendGUI extends Application {
     public HBox makeCodeBox(int id, LimitedTextField[] codeFields, TextField userInField, HBox previewLabels){
         Label codeId = new Label("Code " + id + ": ");
         Label codeColorPreview = makePreviewLabel();
+        previewColorLabels[id - 1] = codeColorPreview;
         LimitedTextField codeField = makeTextField(codeColorPreview, codeFields, id, userInField, previewLabels);
         codeField.setOnInputMethodTextChanged(e -> codeField.setText(codeField.getText().toUpperCase()));
         codeField.setRestrict("[a-fA-F0-9]");
@@ -369,10 +372,16 @@ public class BlendGUI extends Application {
                     Integer.parseInt(newValue.substring(4,6),16)), CornerRadii.EMPTY, Insets.EMPTY)));
             }
             else{
-                previewLabel.setBackground(new Background(new BackgroundFill(Color.rgb(
+                if(currentTheme.equals("DARK")){
+                    previewLabel.setBackground(new Background(new BackgroundFill(Color.rgb(92, 100, 108), CornerRadii.EMPTY, Insets.EMPTY)));
+                }
+                else{
+                    previewLabel.setBackground(new Background(new BackgroundFill(Color.rgb(
                     Integer.parseInt("F2",16),
                     Integer.parseInt("F2",16),
                     Integer.parseInt("F2",16)), CornerRadii.EMPTY, Insets.EMPTY)));
+                }
+                
             }
             unlockFields(codeFields);
             updatePreview(userInField, previewLabels, codeFields);
@@ -479,34 +488,39 @@ public class BlendGUI extends Application {
     public String generateRandomHex(){
 
         Random random = new Random();
-        String rndHex = "";
+        StringBuilder rndHex = new StringBuilder();
 
-        for (int i = 0; i < 6; i++) rndHex += "ABCDEF0123456789".charAt(random.nextInt(16));
+        for (int i = 0; i < 6; i++) rndHex.append("ABCDEF0123456789".charAt(random.nextInt(16)));
 
-        return rndHex;
+        return rndHex.toString();
     }
 
-    public void changeTheme(MenuItem programTheme, Scene mainScene){
+    public void changeTheme(MenuItem programTheme, Scene mainScene, Label[] labelColorPreviews){
         
         if(currentTheme.equals("LIGHT")){
-            goDark(mainScene, programTheme);
+            goDark(mainScene, programTheme, labelColorPreviews);
             currentTheme = "DARK";
         }
         else{
-           goLight(mainScene, programTheme);
+           goLight(mainScene, programTheme, labelColorPreviews);
            currentTheme = "LIGHT"; 
         }
         
     }
 
-    public void goDark(Scene mainScene, MenuItem programTheme){
+    public void goDark(Scene mainScene, MenuItem programTheme, Label[] labelColorPreviews){
         mainScene.getStylesheets().add(getClass().getResource("dark.css").toString());
         programTheme.setText("Light Mode");
+        for(Label l : labelColorPreviews) l.setBackground(new Background(new BackgroundFill(Color.rgb(92, 100, 108), CornerRadii.EMPTY, Insets.EMPTY)));
     }
 
-    public void goLight(Scene mainScene, MenuItem programTheme){
+    public void goLight(Scene mainScene, MenuItem programTheme, Label[] labelColorPreviews){
         mainScene.getStylesheets().remove(getClass().getResource("dark.css").toString());
         programTheme.setText("Dark Mode");
+        for(Label l : labelColorPreviews) l.setBackground(new Background(new BackgroundFill(Color.rgb(
+            Integer.parseInt("F2",16),
+            Integer.parseInt("F2",16),
+            Integer.parseInt("F2",16)), CornerRadii.EMPTY, Insets.EMPTY)));
     }
 
     public static void main(String[] args) {
