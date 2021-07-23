@@ -47,7 +47,7 @@ import java.awt.datatransfer.Clipboard;
 
 public class BlendGUI extends Application {
 
-    String currentTheme = "DARK";
+    String currentTheme = "LIGHT";
 
     Logger log = Logger.getLogger(BlendGUI.class.getSimpleName());
     String defaultFont = "Arial";
@@ -72,12 +72,16 @@ public class BlendGUI extends Application {
                 //Read the codes
                 for(int i = 0; i < 6; i++) {
                     String line = bReader.readLine();
-                    if(Blend.isHexOk(line)){
-                        codes[i] = line;
-                    }
-                    else return false;
+                    if(line != null){
+                        if(Blend.isHexOk(line)){
+                            codes[i] = line;
+                        }
+                        else return false;
+                    }    
                 }
-                for(int i = 0; i < 6; i++) codeFields[i].setText(codes[i]);
+                for(int i = 0; i < 6; i++) {
+                    if(codes[i] != null) codeFields[i].setText(codes[i]);    
+                }
                 return true;
             }
             catch(IOException | StringIndexOutOfBoundsException e)
@@ -176,7 +180,7 @@ public class BlendGUI extends Application {
             }
         });
 
-        MenuItem programTheme = new MenuItem("Light Mode");
+        MenuItem programTheme = new MenuItem("Dark Mode");
 
         menuTools.getItems().addAll(copyItem, programTheme);
 
