@@ -1,5 +1,6 @@
 package com;
 
+import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -46,6 +47,55 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 
 public class BlendGUI extends Application {
+
+    private class SlotMachineColors extends AnimationTimer {
+
+        private long steps;
+        private long progress;
+        private LimitedTextField[] codeFields;
+
+        public SlotMachineColors(LimitedTextField[] codeFields){
+            this.codeFields = codeFields;
+            this.progress = 0;
+        }
+
+        @Override
+        public void handle(long now) {
+            if(this.progress % 2 != 0){
+                doHandle();
+            }
+            else{
+                progress++;
+            }
+        }
+
+        private void doHandle() {
+            if(this.steps < 15){
+                codeFields[0].setText(generateRandomHex());
+            }
+            else if(this.steps >= 15 && this.steps < 30){
+                codeFields[1].setText(generateRandomHex());
+            }
+            else if(this.steps >= 30 && this.steps < 45){
+                codeFields[2].setText(generateRandomHex());
+            }
+            else if(this.steps >= 45 && this.steps < 60){
+                codeFields[3].setText(generateRandomHex());
+            }
+            else if(this.steps >= 60 && this.steps < 75){
+                codeFields[4].setText(generateRandomHex());
+            }
+            else if(this.steps >= 75 && this.steps < 90){
+                codeFields[5].setText(generateRandomHex());
+            }
+            else{
+                this.stop();
+            }
+
+            this.progress++;
+            this.steps++;
+        }
+    }
 
     String currentTheme = "LIGHT";
 
@@ -182,9 +232,15 @@ public class BlendGUI extends Application {
             }
         });
 
+        MenuItem slotMachineColors = new MenuItem("Slot Machine (Seizure Warning)");
+        slotMachineColors.setOnAction(e -> {
+            AnimationTimer timer = new SlotMachineColors(codeFields);
+            timer.start();
+        });
+
         MenuItem programTheme = new MenuItem("Dark Mode");
 
-        menuTools.getItems().addAll(copyItem, programTheme);
+        menuTools.getItems().addAll(copyItem, programTheme, slotMachineColors);
 
         menuBar.getMenus().addAll(menuFile, menuTools);
 
