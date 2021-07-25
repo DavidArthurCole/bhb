@@ -17,15 +17,6 @@ public class Blend {
         //Output will be appended over time
         StringBuilder output = new StringBuilder();
 
-        //Gets RGB values in integer form
-        float hexOneRVal = Integer.parseInt(hexOne.substring(0, 2),16);
-        float hexOneGVal = Integer.parseInt(hexOne.substring(2, 4),16);
-        float hexOneBVal = Integer.parseInt(hexOne.substring(4, 6),16);
-
-        float hexTwoRVal = Integer.parseInt(hexTwo.substring(0, 2),16);
-        float hexTwoGVal = Integer.parseInt(hexTwo.substring(2, 4),16);
-        float hexTwoBVal = Integer.parseInt(hexTwo.substring(4, 6),16);
-
         //Loop through each step
         for(float j = 0; j <= (input.length() - 1); ++j){
 
@@ -34,9 +25,12 @@ public class Blend {
 
             //Combine into one
             StringBuilder hexToAdd = new StringBuilder(
-               padWithZeros(Integer.toHexString((int)hexOneRVal + Math.round(percent * (hexTwoRVal - hexOneRVal))))
-             + padWithZeros(Integer.toHexString((int)hexOneGVal + Math.round(percent * (hexTwoGVal - hexOneGVal))))
-             + padWithZeros(Integer.toHexString((int)hexOneBVal + Math.round(percent * (hexTwoBVal - hexOneBVal)))));
+                padWithZeros(Integer.toHexString(Integer.parseInt(hexOne.substring(0, 2),16) + 
+                    Math.round(percent * (Integer.parseInt(hexTwo.substring(0, 2),16) - Integer.parseInt(hexOne.substring(0, 2),16)))))
+              + padWithZeros(Integer.toHexString(Integer.parseInt(hexOne.substring(2, 4),16) + 
+                    Math.round(percent * (Integer.parseInt(hexTwo.substring(2, 4),16) - Integer.parseInt(hexOne.substring(2, 4),16)))))
+              + padWithZeros(Integer.toHexString(Integer.parseInt(hexOne.substring(4, 6),16) + 
+                    Math.round(percent * (Integer.parseInt(hexTwo.substring(4, 6),16) - Integer.parseInt(hexOne.substring(4, 6),16))))));
 
             output.append("&#" + hexToAdd.toString().toUpperCase() + Character.toString(input.charAt((int)j)));
         }
@@ -68,7 +62,7 @@ public class Blend {
         else blendOdd(howManyCodes - 2, 0, (input.length() - 1), inputSeparated, input);
 
         //Goes through and concatenates blended pieces together into one output
-        for (int i = 0; i <= 4; i++) {
+        for (int i = 0; i <= 4; ++i) {
             if (inputSeparated[i] != null && !inputSeparated[i].equals("")) {
                 if (i == 0) {
                     output.append(blendTwo(codeArray[i], codeArray[i + 1], inputSeparated[i]));
@@ -178,16 +172,6 @@ public class Blend {
         catch(NumberFormatException e){  
           return false;  
         }  
-    }
-
-    public static boolean isHexOk(String hex){
-        if(hex.length() != 6) return false;
-        //Starts a counter for how many valid chars there are
-        int okCount = 0;
-        //For each character in hex     //For each valid hex char               //If it's a valid hex character, increment
-        for(int i = 0; i <= 5; i++) for(int j = 0; j <= 15; j++) if(hex.toUpperCase().charAt(i) == ("0123456789ABCDEF".charAt(j))) okCount++;
-        //If it's 6, good, else, bad
-        return okCount == 6;
     }
 
 }

@@ -125,7 +125,7 @@ public class BlendGUI extends Application {
                 for(int i = 0; i < 6; i++) {
                     String line = bReader.readLine();
                     if(line != null){
-                        if(Blend.isHexOk(line)){
+                        if(isHexOk(line)){
                             codes[i] = line;
                         }
                         else return false;
@@ -148,7 +148,7 @@ public class BlendGUI extends Application {
 
         int goodCodes = 0;
 
-        for(int i = 0; i < 6; i++) if(Blend.isHexOk(codeFields[i].getText())) goodCodes++;
+        for(int i = 0; i < 6; i++) if(isHexOk(codeFields[i].getText())) goodCodes++;
 
         if(goodCodes >= 1){
             FileChooser configChooser = new FileChooser();
@@ -160,7 +160,7 @@ public class BlendGUI extends Application {
 
                 String[] codes = new String[6];
                 for(int i = 0; i < 6; i++){
-                    if(Blend.isHexOk(codeFields[i].getText())) codes[i] = codeFields[i].getText();
+                    if(isHexOk(codeFields[i].getText())) codes[i] = codeFields[i].getText();
                 }
 
                 try( FileWriter fWriter = new FileWriter(saveFile); //Basic reader, throws FileNotFoundException
@@ -263,18 +263,18 @@ public class BlendGUI extends Application {
         //Holds the color code selector and the hex color picker
         HBox codesAndPicker = new HBox();
 
-        HBox code1 = makeCodeBox(1, codeFields, enterNickName, previewLabels);
-        HBox code2 = makeCodeBox(2, codeFields, enterNickName, previewLabels);
-        HBox code3 = makeCodeBox(3, codeFields, enterNickName, previewLabels);
-        HBox code4 = makeCodeBox(4, codeFields, enterNickName, previewLabels);
-        HBox code5 = makeCodeBox(5, codeFields, enterNickName, previewLabels);
-        HBox code6 = makeCodeBox(6, codeFields, enterNickName, previewLabels);
-
         unlockFields(codeFields);
 
         Button clearAllCodes = new Button("Clear All");
 
-        VBox codes = new VBox(code1, code2, code3, code4, code5, code6, clearAllCodes);
+        VBox codes = new VBox(makeCodeBox(1, codeFields, enterNickName, previewLabels),
+                              makeCodeBox(2, codeFields, enterNickName, previewLabels),
+                              makeCodeBox(3, codeFields, enterNickName, previewLabels),
+                              makeCodeBox(4, codeFields, enterNickName, previewLabels),
+                              makeCodeBox(5, codeFields, enterNickName, previewLabels),
+                              makeCodeBox(6, codeFields, enterNickName, previewLabels),
+                              clearAllCodes);
+                               
         codes.setBorder(new Border(new BorderStroke(Color.BLACK, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.THIN)));
         codes.setPadding(new Insets(5));
         codes.setAlignment(Pos.CENTER);
@@ -292,9 +292,7 @@ public class BlendGUI extends Application {
         colorCircle.setRadius(75);
 
         ColorPicker colorPickerUI = new ColorPicker(Color.BLACK);
-        colorPickerUI.setOnAction(e ->{
-            colorCircle.setFill(colorPickerUI.getValue());
-        });
+        colorPickerUI.setOnAction(e -> colorCircle.setFill(colorPickerUI.getValue()));
 
         clearAllCodes.setOnAction(e -> {
             for(LimitedTextField f : codeFields) f.clear();
@@ -302,7 +300,7 @@ public class BlendGUI extends Application {
             enterNickName.clear();
             colorPickerUI.setValue(Color.BLACK);
             colorCircle.setFill(Color.BLACK);
-            code1.requestFocus();
+            codeFields[0].requestFocus();
         });
 
         colorCircle.setFill(colorPickerUI.getValue());
@@ -333,7 +331,7 @@ public class BlendGUI extends Application {
             }
             else{
                 for(int i = 0; i < 6; i++){
-                    if(!Blend.isHexOk(codeFields[i].getText())){
+                    if(!isHexOk(codeFields[i].getText())){
                         codeFields[i].setText(colorPickerUI.getValue().toString().substring(2,8).toUpperCase());
                         break;
                     }
@@ -362,9 +360,7 @@ public class BlendGUI extends Application {
         Scene mainScene = new Scene(mainBox);
         ((VBox)mainScene.getRoot()).getChildren().addAll(menuBar);
 
-        programTheme.setOnAction(e -> {
-            changeTheme(programTheme, mainScene, previewColorLabels, codeFields);
-        });
+        programTheme.setOnAction(e-> changeTheme(programTheme, mainScene, previewColorLabels, codeFields));
 
         menuBar.toBack();
         mainBox.toFront();
@@ -421,16 +417,14 @@ public class BlendGUI extends Application {
 
         newField.textProperty().addListener((observable, oldValue, newValue) -> {
 
-            if(Blend.isHexOk(newValue)){
+            if(isHexOk(newValue)){
                 previewLabel.setBackground(new Background(new BackgroundFill(Color.rgb(
                     Integer.parseInt(newValue.substring(0,2),16),
                     Integer.parseInt(newValue.substring(2,4),16),
                     Integer.parseInt(newValue.substring(4,6),16)), CornerRadii.EMPTY, Insets.EMPTY)));
             }
             else{
-                if(currentTheme.equals("DARK")){
-                    previewLabel.setBackground(new Background(new BackgroundFill(Color.rgb(92, 100, 108), CornerRadii.EMPTY, Insets.EMPTY)));
-                }
+                if(currentTheme.equals("DARK")) previewLabel.setBackground(new Background(new BackgroundFill(Color.rgb(92, 100, 108), CornerRadii.EMPTY, Insets.EMPTY)));
                 else{
                     previewLabel.setBackground(new Background(new BackgroundFill(Color.rgb(
                     Integer.parseInt("F2",16),
@@ -453,12 +447,10 @@ public class BlendGUI extends Application {
 
         for(int i = 0; i < 6; i++){
 
-            if(codefields[i].getText().length() == 6 && !codefields[i].isDisable() && i + 1 < 6 && Blend.isHexOk(codefields[i].getText())){
+            if(codefields[i].getText().length() == 6 && !codefields[i].isDisable() && i + 1 < 6 && isHexOk(codefields[i].getText())){
                 codefields[i + 1].setDisable(false);
             }
-            else if (i + 1 < 6) {
-                codefields[i + 1].setDisable(true);      
-            }
+            else if (i + 1 < 6) codefields[i + 1].setDisable(true);
         }
 
     }
@@ -471,57 +463,30 @@ public class BlendGUI extends Application {
         }    
     }
 
-    public static String updatePreview(TextField userIn, HBox previewLabels, LimitedTextField[] codeFields){
+    public static void updatePreview(TextField userIn, HBox previewLabels, LimitedTextField[] codeFields){
 
         int userInputLength = userIn.getText().length();
 
-        //Nick needs to be at least 3 chars
-        if(userInputLength >= 3){
+        //Need to be at least 2 codes
+        int validCodes = 0;
+        for(int i = 0; i <= 5; i++) if(!codeFields[i].isDisabled() && isHexOk(codeFields[i].getText())) validCodes++;
+        if (userInputLength >=3 && validCodes >= 2 && (userInputLength >= ((validCodes * 2) - 1))){
+            String[] codeArray = new String[validCodes];
+            for(int i = 0; i < validCodes; i++) codeArray[i] = codeFields[i].getText();
 
-            //Need to be at least 2 codes
-            int validCodes = 0;
-            for(int i = 0; i <= 5; i++) if(!codeFields[i].isDisabled() && Blend.isHexOk(codeFields[i].getText())) validCodes++;
-            if (validCodes >= 2){
-
-                //Need to have certain number of characters for more codes
-                boolean minCharsMet = false;
-                if(userInputLength >= ((validCodes * 2) - 1)) minCharsMet = true;
-                
-                if(minCharsMet){
-
-                    String[] codeArray = new String[validCodes];
-                    for(int i = 0; i < validCodes; i++){
-                        codeArray[i] = codeFields[i].getText();
-                    }
-
-                    previewLabels.setPrefHeight(defaultPreviewHeight);
-                    currentNick = Blend.blendMain(validCodes, userIn.getText(), codeArray);
-                    parseNickToLabel(currentNick, previewLabels);
-                }
-                else{
-                    previewLabels.getChildren().clear();
-                    previewLabels.setPrefHeight(0);
-                    currentNick = "";
-                }
-            }
-            else{
-                previewLabels.getChildren().clear();
-                previewLabels.setPrefHeight(0);;
-                currentNick = "";
-            }
+            previewLabels.setPrefHeight(defaultPreviewHeight);
+            currentNick = Blend.blendMain(validCodes, userIn.getText(), codeArray);
+            parseNickToLabel(currentNick, previewLabels);
+            return;        
         }
-        else{
-            previewLabels.getChildren().clear();
-            previewLabels.setPrefHeight(0);
-            currentNick = "";
-        }
-        return null;
+        previewLabels.getChildren().clear();
+        previewLabels.setPrefHeight(0);
+        currentNick = "";
     }
 
     public static void parseNickToLabel(String nick, HBox previewLabels){
 
         previewLabels.getChildren().clear();
-
         String[] comp = nick.split("&#");
 
         for(int i = 1; i < comp.length; i++){
@@ -552,16 +517,14 @@ public class BlendGUI extends Application {
     }
 
     public void changeTheme(MenuItem programTheme, Scene mainScene, Label[] labelColorPreviews, LimitedTextField[] codeFields){
-        
         if(currentTheme.equals("LIGHT")){
             goDark(mainScene, programTheme, labelColorPreviews, codeFields);
             currentTheme = "DARK";
+            return;
         }
-        else{
-           goLight(mainScene, programTheme, labelColorPreviews, codeFields);
-           currentTheme = "LIGHT"; 
-        }
-        
+
+        goLight(mainScene, programTheme, labelColorPreviews, codeFields);
+        currentTheme = "LIGHT";
     }
 
     public void goDark(Scene mainScene, MenuItem programTheme, Label[] labelColorPreviews, LimitedTextField[] codeFields){
@@ -585,6 +548,16 @@ public class BlendGUI extends Application {
                     Integer.parseInt("F2",16)), CornerRadii.EMPTY, Insets.EMPTY)));
             }
         }
+    }
+
+    public static boolean isHexOk(String hex){
+        if(hex.length() != 6) return false;
+        //Starts a counter for how many valid chars there are
+        int okCount = 0;
+        //For each character in hex     //For each valid hex char               //If it's a valid hex character, increment
+        for(int i = 0; i <= 5; ++i) for(int j = 0; j <= 15; ++j) if(hex.toUpperCase().charAt(i) == ("0123456789ABCDEF".charAt(j))) ++okCount;
+        //If it's 6, good, else, bad
+        return okCount == 6;
     }
 
     public static void main(String[] args) {
