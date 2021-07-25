@@ -263,8 +263,6 @@ public class BlendGUI extends Application {
         //Holds the color code selector and the hex color picker
         HBox codesAndPicker = new HBox();
 
-        unlockFields(codeFields);
-
         Button clearAllCodes = new Button("Clear All");
 
         VBox codes = new VBox(makeCodeBox(1, codeFields, enterNickName, previewLabels),
@@ -274,6 +272,8 @@ public class BlendGUI extends Application {
                               makeCodeBox(5, codeFields, enterNickName, previewLabels),
                               makeCodeBox(6, codeFields, enterNickName, previewLabels),
                               clearAllCodes);
+
+        unlockFields(codeFields);
                                
         codes.setBorder(new Border(new BorderStroke(Color.BLACK, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.THIN)));
         codes.setPadding(new Insets(5));
