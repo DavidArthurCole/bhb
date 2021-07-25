@@ -6,6 +6,10 @@ public class Blend {
 
     private Blend(){}
 
+    private static int midpoint1;
+    private static int midpoint2;
+    private static int midpoint3;
+
     protected static Scanner scanner = new Scanner(System.in);
 
     public static String padWithZeros(String inputString){
@@ -77,9 +81,6 @@ public class Blend {
 
     public static void blendEven(int midpoints, int start, int end, String[] inputSeparated, String input){
 
-        int midpoint1;
-        int midpoint2;
-        int midpoint3;
         int midpoint4;
 
         if(midpoints == 2){
@@ -117,9 +118,6 @@ public class Blend {
     }
 
     public static void blendOdd(int midpoints, int start, int end, String[] inputSeparated, String input){
-        int midpoint1;
-        int midpoint2;
-        int midpoint3;
 
         if(midpoints == 1){
             if (input.length() % 2 == 1) {

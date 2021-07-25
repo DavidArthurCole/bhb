@@ -12,7 +12,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
-import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.Background;
@@ -48,14 +47,19 @@ import java.awt.datatransfer.Clipboard;
 
 public class BlendGUI extends Application {
 
+    //Global
+    private LimitedTextField[] codeFields = new LimitedTextField[6];
+    private LimitedTextField enterNickName = new LimitedTextField();
+    private HBox previewLabels = new HBox();
+
     private class SlotMachineColors extends AnimationTimer {
 
         private long steps;
         private long progress;
-        private LimitedTextField[] codeFields;
+        private LimitedTextField[] codeField;
 
-        public SlotMachineColors(LimitedTextField[] codeFields){
-            this.codeFields = codeFields;
+        public SlotMachineColors(){
+            this.codeField = codeFields;
             this.progress = 0;
         }
 
@@ -71,22 +75,22 @@ public class BlendGUI extends Application {
 
         private void doHandle() {
             if(this.steps < 15){
-                codeFields[0].setText(generateRandomHex());
+                codeField[0].setText(generateRandomHex());
             }
             else if(this.steps >= 15 && this.steps < 30){
-                codeFields[1].setText(generateRandomHex());
+                codeField[1].setText(generateRandomHex());
             }
             else if(this.steps >= 30 && this.steps < 45){
-                codeFields[2].setText(generateRandomHex());
+                codeField[2].setText(generateRandomHex());
             }
             else if(this.steps >= 45 && this.steps < 60){
-                codeFields[3].setText(generateRandomHex());
+                codeField[3].setText(generateRandomHex());
             }
             else if(this.steps >= 60 && this.steps < 75){
-                codeFields[4].setText(generateRandomHex());
+                codeField[4].setText(generateRandomHex());
             }
             else if(this.steps >= 75 && this.steps < 90){
-                codeFields[5].setText(generateRandomHex());
+                codeField[5].setText(generateRandomHex());
             }
             else{
                 this.stop();
@@ -104,12 +108,12 @@ public class BlendGUI extends Application {
 
     Label[] previewColorLabels = new Label[6];
 
-    protected static String currentNick;
+    protected String currentNick;
     protected LimitedTextField lastField;
 
     protected static double defaultPreviewHeight;
 
-    public boolean tryLoad(Stage stage, LimitedTextField[] codeFields){
+    public boolean tryLoad(Stage stage){
 
         String[] codes = new String[6];
 
@@ -144,7 +148,7 @@ public class BlendGUI extends Application {
         return false;
     }
 
-    public void trySave(Stage stage, LimitedTextField[] codeFields){
+    public void trySave(Stage stage){
 
         int goodCodes = 0;
 
@@ -197,18 +201,16 @@ public class BlendGUI extends Application {
     @Override
     public void start(Stage stage) throws Exception {
 
-        LimitedTextField[] codeFields = new LimitedTextField[6];
-
         MenuBar menuBar = new MenuBar();
         // Menu - File
         Menu menuFile = new Menu("File");
 
         MenuItem saveItem = new MenuItem("Save");
-        saveItem.setOnAction( e -> trySave(stage, codeFields));
+        saveItem.setOnAction( e -> trySave(stage));
 
         MenuItem loadItem = new MenuItem("Load");
         loadItem.setOnAction( e -> {
-            boolean success = tryLoad(stage, codeFields);
+            boolean success = tryLoad(stage);
             if(!success){
                 Alert errorAlert = new Alert(AlertType.ERROR);
                 errorAlert.setHeaderText("Invalid configuration file");
@@ -218,7 +220,6 @@ public class BlendGUI extends Application {
         });
 
         menuFile.getItems().addAll(saveItem, loadItem);
-
 
         // Menu - Edit
         Menu menuTools = new Menu("Tools");
@@ -233,10 +234,7 @@ public class BlendGUI extends Application {
         });
 
         MenuItem slotMachineColors = new MenuItem("Slot Machine (Seizure Warning)");
-        slotMachineColors.setOnAction(e -> {
-            AnimationTimer timer = new SlotMachineColors(codeFields);
-            timer.start();
-        });
+        slotMachineColors.setOnAction(e -> new SlotMachineColors().start());
 
         MenuItem programTheme = new MenuItem("Dark Mode");
 
@@ -246,7 +244,7 @@ public class BlendGUI extends Application {
 
         VBox mainBox = new VBox();
 
-        HBox previewLabels = new HBox();
+        
         previewLabels.setAlignment(Pos.CENTER);
 
         BorderPane previewCopyPane = new BorderPane();
@@ -255,25 +253,18 @@ public class BlendGUI extends Application {
         previewCopyPane.setBorder(new Border(new BorderStroke(Color.BLACK, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.THIN)));
         previewCopyPane.setPadding(new Insets(5));
 
-        LimitedTextField enterNickName = new LimitedTextField();
         enterNickName.setRestrict("[A-Za-z0-9_]");
         enterNickName.setPrefWidth(275);
-        enterNickName.textProperty().addListener((observable, oldValue, newValue) -> updatePreview(enterNickName, previewLabels, codeFields));
+        enterNickName.textProperty().addListener((observable, oldValue, newValue) -> updatePreview());
         
         //Holds the color code selector and the hex color picker
         HBox codesAndPicker = new HBox();
 
         Button clearAllCodes = new Button("Clear All");
 
-        VBox codes = new VBox(makeCodeBox(1, codeFields, enterNickName, previewLabels),
-                              makeCodeBox(2, codeFields, enterNickName, previewLabels),
-                              makeCodeBox(3, codeFields, enterNickName, previewLabels),
-                              makeCodeBox(4, codeFields, enterNickName, previewLabels),
-                              makeCodeBox(5, codeFields, enterNickName, previewLabels),
-                              makeCodeBox(6, codeFields, enterNickName, previewLabels),
-                              clearAllCodes);
+        VBox codes = new VBox(makeCodeBox(1), makeCodeBox(2), makeCodeBox(3), makeCodeBox(4), makeCodeBox(5), makeCodeBox(6), clearAllCodes);
 
-        unlockFields(codeFields);
+        unlockFields();
                                
         codes.setBorder(new Border(new BorderStroke(Color.BLACK, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.THIN)));
         codes.setPadding(new Insets(5));
@@ -360,7 +351,7 @@ public class BlendGUI extends Application {
         Scene mainScene = new Scene(mainBox);
         ((VBox)mainScene.getRoot()).getChildren().addAll(menuBar);
 
-        programTheme.setOnAction(e-> changeTheme(programTheme, mainScene, previewColorLabels, codeFields));
+        programTheme.setOnAction(e-> changeTheme(programTheme, mainScene, previewColorLabels));
 
         menuBar.toBack();
         mainBox.toFront();
@@ -379,11 +370,11 @@ public class BlendGUI extends Application {
         return newLabel;
     }
 
-    public HBox makeCodeBox(int id, LimitedTextField[] codeFields, TextField userInField, HBox previewLabels){
+    public HBox makeCodeBox(int id){
         Label codeId = new Label("Code " + id + ": ");
         Label codeColorPreview = makePreviewLabel();
         previewColorLabels[id - 1] = codeColorPreview;
-        LimitedTextField codeField = makeTextField(codeColorPreview, codeFields, id, userInField, previewLabels);
+        LimitedTextField codeField = makeTextField(codeColorPreview, id);
         codeField.setOnInputMethodTextChanged(e -> codeField.setText(codeField.getText().toUpperCase()));
         codeField.setRestrict("[a-fA-F0-9]");
 
@@ -403,7 +394,7 @@ public class BlendGUI extends Application {
         return newBox;
     }
 
-    public LimitedTextField makeTextField(Label previewLabel, LimitedTextField[] codeFields, int id, TextField userInField, HBox previewLabels){
+    public LimitedTextField makeTextField(Label previewLabel, int id){
         LimitedTextField newField = new LimitedTextField();      
 
         newField.setPrefWidth(75);
@@ -433,8 +424,8 @@ public class BlendGUI extends Application {
                 }
                 
             }
-            unlockFields(codeFields);
-            updatePreview(userInField, previewLabels, codeFields);
+            unlockFields();
+            updatePreview();
             updateTextFieldFontSize(newField);
         });
 
@@ -443,14 +434,14 @@ public class BlendGUI extends Application {
         return newField;
     }
 
-    public void unlockFields(LimitedTextField[] codefields){
+    public void unlockFields(){
 
         for(int i = 0; i < 6; i++){
 
-            if(codefields[i].getText().length() == 6 && !codefields[i].isDisable() && i + 1 < 6 && isHexOk(codefields[i].getText())){
-                codefields[i + 1].setDisable(false);
+            if(codeFields[i].getText().length() == 6 && !codeFields[i].isDisable() && i + 1 < 6 && isHexOk(codeFields[i].getText())){
+                codeFields[i + 1].setDisable(false);
             }
-            else if (i + 1 < 6) codefields[i + 1].setDisable(true);
+            else if (i + 1 < 6) codeFields[i + 1].setDisable(true);
         }
 
     }
@@ -463,9 +454,9 @@ public class BlendGUI extends Application {
         }    
     }
 
-    public static void updatePreview(TextField userIn, HBox previewLabels, LimitedTextField[] codeFields){
+    public void updatePreview(){
 
-        int userInputLength = userIn.getText().length();
+        int userInputLength = enterNickName.getText().length();
 
         //Need to be at least 2 codes
         int validCodes = 0;
@@ -475,7 +466,7 @@ public class BlendGUI extends Application {
             for(int i = 0; i < validCodes; i++) codeArray[i] = codeFields[i].getText();
 
             previewLabels.setPrefHeight(defaultPreviewHeight);
-            currentNick = Blend.blendMain(validCodes, userIn.getText(), codeArray);
+            currentNick = Blend.blendMain(validCodes, enterNickName.getText(), codeArray);
             parseNickToLabel(currentNick, previewLabels);
             return;        
         }
@@ -516,18 +507,18 @@ public class BlendGUI extends Application {
         return rndHex.toString();
     }
 
-    public void changeTheme(MenuItem programTheme, Scene mainScene, Label[] labelColorPreviews, LimitedTextField[] codeFields){
+    public void changeTheme(MenuItem programTheme, Scene mainScene, Label[] labelColorPreviews){
         if(currentTheme.equals("LIGHT")){
-            goDark(mainScene, programTheme, labelColorPreviews, codeFields);
+            goDark(mainScene, programTheme, labelColorPreviews);
             currentTheme = "DARK";
             return;
         }
 
-        goLight(mainScene, programTheme, labelColorPreviews, codeFields);
+        goLight(mainScene, programTheme, labelColorPreviews);
         currentTheme = "LIGHT";
     }
 
-    public void goDark(Scene mainScene, MenuItem programTheme, Label[] labelColorPreviews, LimitedTextField[] codeFields){
+    public void goDark(Scene mainScene, MenuItem programTheme, Label[] labelColorPreviews){
         mainScene.getStylesheets().add(getClass().getResource("dark.css").toString());
         programTheme.setText("Light Mode");
         for(int i = 0; i <= 5; i++){
@@ -537,7 +528,7 @@ public class BlendGUI extends Application {
         }
     }
 
-    public void goLight(Scene mainScene, MenuItem programTheme, Label[] labelColorPreviews, LimitedTextField[] codeFields){
+    public void goLight(Scene mainScene, MenuItem programTheme, Label[] labelColorPreviews){
         mainScene.getStylesheets().remove(getClass().getResource("dark.css").toString());
         programTheme.setText("Dark Mode");
         for(int i = 0; i <=5; i++){
