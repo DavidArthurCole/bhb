@@ -60,7 +60,7 @@ import java.awt.datatransfer.Clipboard;
 public class BlendGUI extends Application {
 
     //Global
-    private final String VERSION = "1.2.6";
+    private final String VERSION = "1.2.7";
 
     private LimitedTextField[] codeFields = new LimitedTextField[6];
     private LimitedTextField enterNickName = new LimitedTextField();
