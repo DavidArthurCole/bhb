@@ -8,94 +8,95 @@ import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.scene.control.TextField;
 
+
 public class LimitedTextField extends TextField {
-	private IntegerProperty maxLength = new SimpleIntegerProperty(this, "maxLength", -1);
-	private StringProperty restrict = new SimpleStringProperty(this, "restrict");
+    private IntegerProperty maxLength = new SimpleIntegerProperty(this, "maxLength", -1);
+    private StringProperty restrict = new SimpleStringProperty(this, "restrict");
 
-	public LimitedTextField() {
-		textProperty().addListener(new ChangeListener<String>() {
-			private boolean ignore;
+    public LimitedTextField() {
+        textProperty().addListener(new ChangeListener<String>() {
+            private boolean ignore;
 
-			@Override
-			public void changed(
-					ObservableValue<? extends String> observableValue,
-					String s, String s1) {
+            @Override
+            public void changed(
+                    ObservableValue<? extends String> observableValue,
+                    String s, String s1) {
 
-				if (ignore || s1 == null){
-					return;
+                if (ignore || s1 == null){
+                    return;
                 }
-				if (maxLength.get() > -1 && s1.length() > maxLength.get()) {
-					ignore = true;
-					setText(s1.substring(0, maxLength.get()));
-					ignore = false;
-				}
-				if (restrict.get() != null && !restrict.get().equals("")
-						&& !s1.matches(restrict.get() + "*")) {
-					ignore = true;
-					setText(s);
-					ignore = false;
-				}
-			}
-		});
-	}
+                if (maxLength.get() > -1 && s1.length() > maxLength.get()) {
+                    ignore = true;
+                    setText(s1.substring(0, maxLength.get()));
+                    ignore = false;
+                }
+                if (restrict.get() != null && !restrict.get().equals("")
+                        && !s1.matches(restrict.get() + "*")) {
+                    ignore = true;
+                    setText(s);
+                    ignore = false;
+                }
+            }
+        });
+    }
 
-	/**
-	 * The max length property.
-	 *
-	 * @return The max length property.
-	 */
-	public IntegerProperty maxLengthProperty() {
-		return maxLength;
-	}
+    /**
+     * The max length property.
+     *
+     * @return The max length property.
+     */
+    public IntegerProperty maxLengthProperty() {
+        return maxLength;
+    }
 
-	/**
-	 * Gets the max length of the text field.
-	 *
-	 * @return The max length.
-	 */
-	public int getMaxLength() {
-		return maxLength.get();
-	}
+    /**
+     * Gets the max length of the text field.
+     *
+     * @return The max length.
+     */
+    public int getMaxLength() {
+        return maxLength.get();
+    }
 
-	/**
-	 * Sets the max length of the text field.
-	 *
-	 * @param maxLength
-	 *            The max length.
-	 */
-	public void setMaxLength(int maxLength) {
-		this.maxLength.set(maxLength);
-	}
+    /**
+     * Sets the max length of the text field.
+     *
+     * @param maxLength
+     *            The max length.
+     */
+    public void setMaxLength(int maxLength) {
+        this.maxLength.set(maxLength);
+    }
 
-	/**
-	 * The restrict property.
-	 *
-	 * @return The restrict property.
-	 */
-	public StringProperty restrictProperty() {
-		return restrict;
-	}
+    /**
+     * The restrict property.
+     *
+     * @return The restrict property.
+     */
+    public StringProperty restrictProperty() {
+        return restrict;
+    }
 
-	/**
-	 * Gets a regular expression character class which restricts the user input.
-	 *
-	 *
-	 * @return The regular expression.
-	 * @see #getRestrict()
-	 */
-	public String getRestrict() {
-		return restrict.get();
-	}
+    /**
+     * Gets a regular expression character class which restricts the user input.
+     *
+     *
+     * @return The regular expression.
+     * @see #getRestrict()
+     */
+    public String getRestrict() {
+        return restrict.get();
+    }
 
-	/**
-	 * Sets a regular expression character class which restricts the user input.
-	 *
-	 * E.g. [0-9] only allows numeric values.
-	 *
-	 * @param restrict
-	 *            The regular expression.
-	 */
-	public void setRestrict(String restrict) {
-		this.restrict.set(restrict);
-	}
+    /**
+     * Sets a regular expression character class which restricts the user input.
+     *
+     * E.g. [0-9] only allows numeric values.
+     *
+     * @param restrict
+     *            The regular expression.
+     */
+    public void setRestrict(String restrict) {
+        this.restrict.set(restrict);
+    }
 }

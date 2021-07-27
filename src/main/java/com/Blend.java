@@ -23,14 +23,14 @@ public class Blend {
 
         //Loop through each step
         for(float j = 0; j <= (input.length() - 1); ++j){
-            
+
             output.append("&#" 
-            + padWithZeros(Integer.toHexString(Integer.parseInt(hexOne.substring(0, 2),16) + 
+            + (padWithZeros(Integer.toHexString(Integer.parseInt(hexOne.substring(0, 2),16) + 
                 (int)((j / (input.length() - 1)) * (Integer.parseInt(hexTwo.substring(0, 2),16) - Integer.parseInt(hexOne.substring(0, 2),16)))))
             + padWithZeros(Integer.toHexString(Integer.parseInt(hexOne.substring(2, 4),16) + 
                 (int)((j / (input.length() - 1)) * (Integer.parseInt(hexTwo.substring(2, 4),16) - Integer.parseInt(hexOne.substring(2, 4),16)))))
             + padWithZeros(Integer.toHexString(Integer.parseInt(hexOne.substring(4, 6),16) + 
-                (int)((j / (input.length() - 1)) * (Integer.parseInt(hexTwo.substring(4, 6),16) - Integer.parseInt(hexOne.substring(4, 6),16))))) 
+                (int)((j / (input.length() - 1)) * (Integer.parseInt(hexTwo.substring(4, 6),16) - Integer.parseInt(hexOne.substring(4, 6),16)))))).toUpperCase()
             + input.charAt((int)j));
         }
 

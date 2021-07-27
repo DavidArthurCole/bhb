@@ -7,6 +7,8 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ColorPicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
@@ -37,7 +39,17 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.Optional;
 import java.util.Random;
+import com.google.gson.Gson;
+
+//PID
+import java.net.*;
+
 
 //Logging
 import java.util.logging.*;
@@ -48,9 +60,84 @@ import java.awt.datatransfer.Clipboard;
 public class BlendGUI extends Application {
 
     //Global
+    private final String VERSION = "1.2.6";
+
     private LimitedTextField[] codeFields = new LimitedTextField[6];
     private LimitedTextField enterNickName = new LimitedTextField();
     private HBox previewLabels = new HBox();
+
+    private class Version {
+
+        private String tag_name;
+
+        public Version(String tag_name){
+            this.tag_name = tag_name;
+        }
+    }
+
+    public String getRunningPath() {
+        try{
+            return( System.getProperty("user.dir").replace("\\", "/"));
+        }catch (Exception e){
+            System.out.println("Exception caught ="+e.getMessage());
+            return(null);
+        }
+    }
+
+    private void executeCommand(String command) {
+        try {
+            Process process = Runtime.getRuntime().exec(command);
+            process.waitFor();
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static long getPID() {
+        String processName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
+        if (processName != null && processName.length() > 0) {
+            try {
+                return Long.parseLong(processName.split("@")[0]);
+            }
+            catch (Exception e) {
+                return 0;
+            }
+        }
+
+        return 0;
+    }
+
+
+    public void updateSelf(String newVersion){
+        String runningPath =  System.getProperty("user.dir");
+
+        Alert looking = new Alert(AlertType.INFORMATION, "Looking for exe @:\n" + runningPath + "/BHB.exe");
+        looking.showAndWait();
+
+        Alert found2 = new Alert(AlertType.INFORMATION, "Exe found.");
+
+        if(new File(runningPath + "/BHB.exe").exists()) found2.show();
+
+        String exeUrl = "https://github.com/DavidArthurCole/bhb/releases/download/" + newVersion + "/BHB.exe";
+
+        StringBuilder command = new StringBuilder("cmd.exe /c cd " + runningPath + " & taskkill /F /PID " + getPID());
+
+        if(new File(runningPath + "/BHB.exe").exists()){
+            command.append(" & curl -L -O " + exeUrl);
+        }
+
+        try{
+            Alert cmd = new Alert(AlertType.INFORMATION, "Attempting the following command:\n" + command.toString());
+            cmd.show();
+            System.out.println(command.toString());
+            executeCommand(command.toString());
+        }
+        catch(Exception ex){
+            System.out.println(ex.getMessage());
+        }
+        
+
+    }
 
     private class SlotMachineColors extends AnimationTimer {
 
@@ -167,6 +254,49 @@ public class BlendGUI extends Application {
        
     }
 
+    public String getJSON(String url, int timeout) {
+        HttpURLConnection c = null;
+        try {
+            URL u = new URL(url);
+            c = (HttpURLConnection) u.openConnection();
+            c.setRequestMethod("GET");
+            c.setRequestProperty("Content-length", "0");
+            c.setUseCaches(false);
+            c.setAllowUserInteraction(false);
+            c.setConnectTimeout(timeout);
+            c.setReadTimeout(timeout);
+            c.connect();
+            int status = c.getResponseCode();
+    
+            switch (status) {
+                case 200:
+                case 201:
+                    BufferedReader br = new BufferedReader(new InputStreamReader(c.getInputStream()));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        sb.append(line+"\n");
+                    }
+                    br.close();
+                    return sb.toString();
+            }
+    
+        } catch (MalformedURLException ex) {
+            Logger.getLogger(getClass().getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException ex) {
+            Logger.getLogger(getClass().getName()).log(Level.SEVERE, null, ex);
+        } finally {
+           if (c != null) {
+              try {
+                  c.disconnect();
+              } catch (Exception ex) {
+                 Logger.getLogger(getClass().getName()).log(Level.SEVERE, null, ex);
+              }
+           }
+        }
+        return null;
+    }
+
     @Override
     public void start(Stage stage) throws Exception {
 
@@ -207,7 +337,56 @@ public class BlendGUI extends Application {
 
         MenuItem programTheme = new MenuItem("Dark Mode");
 
-        menuTools.getItems().addAll(copyItem, programTheme, slotMachineColors);
+        MenuItem updateChecker = new MenuItem("Check For Updates");
+
+        updateChecker.setOnAction(e -> {
+            //Literally just gets the latest version from the git repo
+            Version latest = new Version("0.0.0");
+            try {
+                String json = getJSON("https://api.github.com/repos/DavidArthurCole/bhb/releases/latest", 10000);
+                Gson g = new Gson();
+                latest = g.fromJson(json, Version.class);
+                
+            } catch (Exception ex) {
+                Alert errorAlert = new Alert(AlertType.ERROR);
+                errorAlert.setHeaderText("Unknown error");
+                errorAlert.setContentText("An unknown error has occured. Please report this: " + ex.getMessage());
+                errorAlert.showAndWait();
+            }
+
+            String newestVersionCopy = latest.tag_name;
+
+            String currentVersion = VERSION.replace(".", "");
+            String newestVersion = latest.tag_name.replace(".", "");
+
+            int currentVersionInt = Integer.parseInt(currentVersion);
+            int newestVersionInt = Integer.parseInt(newestVersion);
+
+            if(newestVersionInt > currentVersionInt){
+
+                ButtonType no = new ButtonType("No", ButtonBar.ButtonData.OK_DONE);
+                ButtonType yes = new ButtonType("Yes", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+                Alert updateAlert = new Alert(AlertType.CONFIRMATION, "An updated version of BHB is available. Current: " 
+                    + VERSION + ", New: " + newestVersionCopy + ". Update now? This will restart your program.",
+                    no, yes);
+                updateAlert.setHeaderText("Out of date");
+                Optional<ButtonType> result = updateAlert.showAndWait();
+
+                if(result.orElse(no) == yes){
+                    updateSelf(newestVersionCopy);
+                }
+            }
+            else{
+                Alert updateAlert = new Alert(AlertType.INFORMATION);
+                updateAlert.setHeaderText("Up to date");
+                updateAlert.setContentText("BHB is up to date, (version " + VERSION + ")");
+                updateAlert.showAndWait();
+            }
+
+        });
+
+        menuTools.getItems().addAll(copyItem, programTheme, slotMachineColors, updateChecker);
 
         menuBar.getMenus().addAll(menuFile, menuTools);
 
