@@ -111,13 +111,6 @@ public class BlendGUI extends Application {
     public void updateSelf(String newVersion){
         String runningPath =  System.getProperty("user.dir");
 
-        Alert looking = new Alert(AlertType.INFORMATION, "Looking for exe @:\n" + runningPath + "/BHB.exe");
-        looking.showAndWait();
-
-        Alert found2 = new Alert(AlertType.INFORMATION, "Exe found.");
-
-        if(new File(runningPath + "/BHB.exe").exists()) found2.show();
-
         String exeUrl = "https://github.com/DavidArthurCole/bhb/releases/download/" + newVersion + "/BHB.exe";
 
         StringBuilder command = new StringBuilder("cmd.exe /c cd " + runningPath + " & taskkill /F /PID " + getPID());
@@ -126,15 +119,9 @@ public class BlendGUI extends Application {
             command.append(" & curl -L -O " + exeUrl);
         }
 
-        try{
-            Alert cmd = new Alert(AlertType.INFORMATION, "Attempting the following command:\n" + command.toString());
-            cmd.show();
-            System.out.println(command.toString());
-            executeCommand(command.toString());
-        }
-        catch(Exception ex){
-            System.out.println(ex.getMessage());
-        }
+        Alert cmd = new Alert(AlertType.INFORMATION, "Attempting the following command:\n" + command.toString());
+        cmd.show();
+        executeCommand(command.toString());
         
 
     }
