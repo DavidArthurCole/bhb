@@ -47,10 +47,6 @@ import java.util.Optional;
 import java.util.Random;
 import com.google.gson.Gson;
 
-//PID
-import java.net.*;
-
-
 //Logging
 import java.util.logging.*;
 
@@ -60,7 +56,7 @@ import java.awt.datatransfer.Clipboard;
 public class BlendGUI extends Application {
 
     //Global
-    private final String VERSION = "1.2.7";
+    private final String VERSION = "1.2.8";
 
     private LimitedTextField[] codeFields = new LimitedTextField[6];
     private LimitedTextField enterNickName = new LimitedTextField();
@@ -165,6 +161,9 @@ public class BlendGUI extends Application {
         configChooser.setTitle("Open configuration file");
         File configFile = configChooser.showOpenDialog(stage);
         if(configFile != null){
+            for(int i = 0; i < 6; i++){
+                codeFields[i].setText("");
+            }
             try( FileReader fReader = new FileReader(configFile); //Basic reader, throws FileNotFoundException
             BufferedReader bReader = new BufferedReader(fReader);)
             { 
