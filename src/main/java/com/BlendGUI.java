@@ -56,7 +56,7 @@ import java.awt.datatransfer.Clipboard;
 public class BlendGUI extends Application {
 
     //Global
-    private final String VERSION = "1.2.10";
+    private final String VERSION = "1.2.11";
 
     private LimitedTextField[] codeFields = new LimitedTextField[6];
     private LimitedTextField enterNickName = new LimitedTextField();
@@ -70,6 +70,17 @@ public class BlendGUI extends Application {
             this.tag_name = tag_name;
         }
     }
+
+    private class PublishDate {
+
+        private String published_at;
+
+        public PublishDate(String published_at ){
+            this.published_at = published_at;
+        }
+    }
+
+
 
     private void executeCommand(String command) {
         try {
@@ -259,8 +270,8 @@ public class BlendGUI extends Application {
         String[] compCurrent = VERSION.split("\\.");
 
         return(Integer.parseInt(compCurrent[0]) < Integer.parseInt(compLatest[0]) // X.z.z <- If first digit is less
-        || (Integer.parseInt(compCurrent[0]) >= Integer.parseInt(compLatest[0]) && Integer.parseInt(compCurrent[1]) < Integer.parseInt(compLatest[1]))
-        || (Integer.parseInt(compCurrent[0]) >= Integer.parseInt(compLatest[0]) && Integer.parseInt(compCurrent[1]) >= Integer.parseInt(compLatest[1]) && Integer.parseInt(compCurrent[2]) < Integer.parseInt(compLatest[2])));
+        || (Integer.parseInt(compCurrent[0]) >= Integer.parseInt(compLatest[0]) && Integer.parseInt(compCurrent[1]) < Integer.parseInt(compLatest[1])) // z.X.z <- If second digit is less
+        || (Integer.parseInt(compCurrent[0]) >= Integer.parseInt(compLatest[0]) && Integer.parseInt(compCurrent[1]) >= Integer.parseInt(compLatest[1]) && Integer.parseInt(compCurrent[2]) < Integer.parseInt(compLatest[2]))); // z.z.X <- If third digit is less
     }
 
     @Override
@@ -304,6 +315,19 @@ public class BlendGUI extends Application {
         MenuItem programTheme = new MenuItem("Dark Mode");
         MenuItem updateChecker = new MenuItem("Check For Updates");
 
+        Menu menuHelp = new Menu("Help");
+
+        MenuItem about = new MenuItem("About");
+        about.setOnAction(e -> {
+            String json = getJSON("https://api.github.com/repos/DavidArthurCole/bhb/releases/latest", 10000);
+            PublishDate publishDate = new Gson().fromJson(json, PublishDate.class);
+
+            Alert aboutAlert = new Alert(AlertType.INFORMATION, "Release date: " + publishDate.published_at.substring(0, publishDate.published_at.length() - 1).replace("T", " "));
+            aboutAlert.setTitle("About BHB");
+            aboutAlert.setHeaderText("Version: " + VERSION);
+            aboutAlert.showAndWait();
+        });
+
         updateChecker.setOnAction(e -> {
             //Literally just gets the latest version from the git repo
             Version latest = new Version("0.0.0");
@@ -314,6 +338,7 @@ public class BlendGUI extends Application {
             } catch (Exception ex) {
                 Alert errorAlert = new Alert(AlertType.ERROR);
                 errorAlert.setHeaderText("Unknown error");
+                errorAlert.setTitle("ERROR - REPORT THIS");
                 errorAlert.setContentText("An unknown error has occured. Please report this: " + ex.getMessage());
                 errorAlert.showAndWait();
             }
@@ -327,6 +352,7 @@ public class BlendGUI extends Application {
                     + VERSION + ", New: " + latest.tag_name + ". Update now? This will restart your program.",
                     no, yes);
                 updateAlert.setHeaderText("Out of date");
+                updateAlert.setTitle("Updates found");
                 Optional<ButtonType> result = updateAlert.showAndWait();
 
                 if(result.orElse(no) == yes){
@@ -339,15 +365,18 @@ public class BlendGUI extends Application {
             else{
                 Alert updateAlert = new Alert(AlertType.INFORMATION);
                 updateAlert.setHeaderText("Up to date");
+                updateAlert.setTitle("No updates found");
                 updateAlert.setContentText("BHB is up to date, (version " + VERSION + ")");
                 updateAlert.showAndWait();
             }
 
         });
 
-        menuTools.getItems().addAll(copyItem, programTheme, slotMachineColors, updateChecker);
+        menuHelp.getItems().addAll(about, updateChecker);
 
-        menuBar.getMenus().addAll(menuFile, menuTools);
+        menuTools.getItems().addAll(copyItem, programTheme, slotMachineColors);
+
+        menuBar.getMenus().addAll(menuFile, menuTools, menuHelp);
 
         VBox mainBox = new VBox();
 
