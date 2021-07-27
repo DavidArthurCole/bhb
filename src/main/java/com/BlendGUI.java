@@ -56,7 +56,7 @@ import java.awt.datatransfer.Clipboard;
 public class BlendGUI extends Application {
 
     //Global
-    private final String VERSION = "1.2.8";
+    private final String VERSION = "1.2.10";
 
     private LimitedTextField[] codeFields = new LimitedTextField[6];
     private LimitedTextField enterNickName = new LimitedTextField();
@@ -68,15 +68,6 @@ public class BlendGUI extends Application {
 
         public Version(String tag_name){
             this.tag_name = tag_name;
-        }
-    }
-
-    public String getRunningPath() {
-        try{
-            return( System.getProperty("user.dir").replace("\\", "/"));
-        }catch (Exception e){
-            System.out.println("Exception caught ="+e.getMessage());
-            return(null);
         }
     }
 
@@ -101,25 +92,6 @@ public class BlendGUI extends Application {
         }
 
         return 0;
-    }
-
-
-    public void updateSelf(String newVersion){
-        String runningPath =  System.getProperty("user.dir");
-
-        String exeUrl = "https://github.com/DavidArthurCole/bhb/releases/download/" + newVersion + "/BHB.exe";
-
-        StringBuilder command = new StringBuilder("cmd.exe /c cd " + runningPath + " & taskkill /F /PID " + getPID());
-
-        if(new File(runningPath + "/BHB.exe").exists()){
-            command.append(" & curl -L -O " + exeUrl);
-        }
-
-        Alert cmd = new Alert(AlertType.INFORMATION, "Attempting the following command:\n" + command.toString());
-        cmd.show();
-        executeCommand(command.toString());
-        
-
     }
 
     private class SlotMachineColors extends AnimationTimer {
@@ -161,9 +133,7 @@ public class BlendGUI extends Application {
         configChooser.setTitle("Open configuration file");
         File configFile = configChooser.showOpenDialog(stage);
         if(configFile != null){
-            for(int i = 0; i < 6; i++){
-                codeFields[i].setText("");
-            }
+            for(int i = 0; i < 6; i++) codeFields[i].setText("");
             try( FileReader fReader = new FileReader(configFile); //Basic reader, throws FileNotFoundException
             BufferedReader bReader = new BufferedReader(fReader);)
             { 
@@ -283,6 +253,16 @@ public class BlendGUI extends Application {
         return null;
     }
 
+    public boolean isOutOfDate(String latestVersion){
+        
+        String[] compLatest = latestVersion.split("\\.");
+        String[] compCurrent = VERSION.split("\\.");
+
+        return(Integer.parseInt(compCurrent[0]) < Integer.parseInt(compLatest[0]) // X.z.z <- If first digit is less
+        || (Integer.parseInt(compCurrent[0]) >= Integer.parseInt(compLatest[0]) && Integer.parseInt(compCurrent[1]) < Integer.parseInt(compLatest[1]))
+        || (Integer.parseInt(compCurrent[0]) >= Integer.parseInt(compLatest[0]) && Integer.parseInt(compCurrent[1]) >= Integer.parseInt(compLatest[1]) && Integer.parseInt(compCurrent[2]) < Integer.parseInt(compLatest[2])));
+    }
+
     @Override
     public void start(Stage stage) throws Exception {
 
@@ -322,7 +302,6 @@ public class BlendGUI extends Application {
         slotMachineColors.setOnAction(e -> new SlotMachineColors().start());
 
         MenuItem programTheme = new MenuItem("Dark Mode");
-
         MenuItem updateChecker = new MenuItem("Check For Updates");
 
         updateChecker.setOnAction(e -> {
@@ -330,8 +309,7 @@ public class BlendGUI extends Application {
             Version latest = new Version("0.0.0");
             try {
                 String json = getJSON("https://api.github.com/repos/DavidArthurCole/bhb/releases/latest", 10000);
-                Gson g = new Gson();
-                latest = g.fromJson(json, Version.class);
+                latest = new Gson().fromJson(json, Version.class);
                 
             } catch (Exception ex) {
                 Alert errorAlert = new Alert(AlertType.ERROR);
@@ -340,27 +318,22 @@ public class BlendGUI extends Application {
                 errorAlert.showAndWait();
             }
 
-            String newestVersionCopy = latest.tag_name;
-
-            String currentVersion = VERSION.replace(".", "");
-            String newestVersion = latest.tag_name.replace(".", "");
-
-            int currentVersionInt = Integer.parseInt(currentVersion);
-            int newestVersionInt = Integer.parseInt(newestVersion);
-
-            if(newestVersionInt > currentVersionInt){
+            if(isOutOfDate(latest.tag_name)){
 
                 ButtonType no = new ButtonType("No", ButtonBar.ButtonData.OK_DONE);
                 ButtonType yes = new ButtonType("Yes", ButtonBar.ButtonData.CANCEL_CLOSE);
 
                 Alert updateAlert = new Alert(AlertType.CONFIRMATION, "An updated version of BHB is available. Current: " 
-                    + VERSION + ", New: " + newestVersionCopy + ". Update now? This will restart your program.",
+                    + VERSION + ", New: " + latest.tag_name + ". Update now? This will restart your program.",
                     no, yes);
                 updateAlert.setHeaderText("Out of date");
                 Optional<ButtonType> result = updateAlert.showAndWait();
 
                 if(result.orElse(no) == yes){
-                    updateSelf(newestVersionCopy);
+                    if(new File(System.getProperty("user.dir") + "/BHB.exe").exists()){
+                        executeCommand("cmd.exe /c cd " +  System.getProperty("user.dir") + " & taskkill /F /PID " + getPID() 
+                            + " & curl -L -O " + "https://github.com/DavidArthurCole/bhb/releases/download/" + latest.tag_name + "/BHB.exe & BHB.exe");
+                    }
                 }
             }
             else{
