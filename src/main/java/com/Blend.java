@@ -23,20 +23,15 @@ public class Blend {
 
         //Loop through each step
         for(float j = 0; j <= (input.length() - 1); ++j){
-
-            //Calculate what percentage of the color should be faded
-            float percent = (j / (input.length() - 1));
-
-            //Combine into one
-            StringBuilder hexToAdd = new StringBuilder(
-                padWithZeros(Integer.toHexString(Integer.parseInt(hexOne.substring(0, 2),16) + 
-                    Math.round(percent * (Integer.parseInt(hexTwo.substring(0, 2),16) - Integer.parseInt(hexOne.substring(0, 2),16)))))
-              + padWithZeros(Integer.toHexString(Integer.parseInt(hexOne.substring(2, 4),16) + 
-                    Math.round(percent * (Integer.parseInt(hexTwo.substring(2, 4),16) - Integer.parseInt(hexOne.substring(2, 4),16)))))
-              + padWithZeros(Integer.toHexString(Integer.parseInt(hexOne.substring(4, 6),16) + 
-                    Math.round(percent * (Integer.parseInt(hexTwo.substring(4, 6),16) - Integer.parseInt(hexOne.substring(4, 6),16))))));
-
-            output.append("&#" + hexToAdd.toString().toUpperCase() + Character.toString(input.charAt((int)j)));
+            
+            output.append("&#" 
+            + padWithZeros(Integer.toHexString(Integer.parseInt(hexOne.substring(0, 2),16) + 
+                (int)((j / (input.length() - 1)) * (Integer.parseInt(hexTwo.substring(0, 2),16) - Integer.parseInt(hexOne.substring(0, 2),16)))))
+            + padWithZeros(Integer.toHexString(Integer.parseInt(hexOne.substring(2, 4),16) + 
+                (int)((j / (input.length() - 1)) * (Integer.parseInt(hexTwo.substring(2, 4),16) - Integer.parseInt(hexOne.substring(2, 4),16)))))
+            + padWithZeros(Integer.toHexString(Integer.parseInt(hexOne.substring(4, 6),16) + 
+                (int)((j / (input.length() - 1)) * (Integer.parseInt(hexTwo.substring(4, 6),16) - Integer.parseInt(hexOne.substring(4, 6),16))))) 
+            + input.charAt((int)j));
         }
 
         return output.toString();
@@ -161,15 +156,4 @@ public class Blend {
             inputSeparated[3] = input.substring(midpoint3, end + 1);
         }
     }
-
-    public static boolean isNumeric(String str) { 
-        try {  
-          Integer.parseInt(str);  
-          return true;
-        } 
-        catch(NumberFormatException e){  
-          return false;  
-        }  
-    }
-
 }

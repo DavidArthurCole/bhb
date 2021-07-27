@@ -54,8 +54,7 @@ public class BlendGUI extends Application {
 
     private class SlotMachineColors extends AnimationTimer {
 
-        private long steps;
-        private long progress;
+        private double progress;
         private LimitedTextField[] codeField;
 
         public SlotMachineColors(){
@@ -65,39 +64,9 @@ public class BlendGUI extends Application {
 
         @Override
         public void handle(long now) {
-            if(this.progress % 2 != 0){
-                doHandle();
-            }
-            else{
-                progress++;
-            }
-        }
-
-        private void doHandle() {
-            if(this.steps < 15){
-                codeField[0].setText(generateRandomHex());
-            }
-            else if(this.steps >= 15 && this.steps < 30){
-                codeField[1].setText(generateRandomHex());
-            }
-            else if(this.steps >= 30 && this.steps < 45){
-                codeField[2].setText(generateRandomHex());
-            }
-            else if(this.steps >= 45 && this.steps < 60){
-                codeField[3].setText(generateRandomHex());
-            }
-            else if(this.steps >= 60 && this.steps < 75){
-                codeField[4].setText(generateRandomHex());
-            }
-            else if(this.steps >= 75 && this.steps < 90){
-                codeField[5].setText(generateRandomHex());
-            }
-            else{
-                this.stop();
-            }
-
-            this.progress++;
-            this.steps++;
+            if(this.progress % 2 != 0) for(int c = 5; c >= (int)Math.floor(progress / 30); --c) codeField[c].setText(generateRandomHex());  
+            else if(progress >= 180) this.stop();
+            progress++;
         }
     }
 
