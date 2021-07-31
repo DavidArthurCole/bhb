@@ -31,6 +31,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+
 //Clipboard management
 import java.awt.datatransfer.StringSelection;
 import java.io.BufferedReader;
@@ -39,13 +40,15 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.Random;
-import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
+import org.apache.commons.io.IOUtils;
+import org.json.JSONObject;
 
 //Logging
 import java.util.logging.*;
@@ -56,38 +59,20 @@ import java.awt.datatransfer.Clipboard;
 public class BlendGUI extends Application {
 
     //Global
-    private final String VERSION = "1.2.11";
+    private static final String VERSION = "1.2.13";
 
     private LimitedTextField[] codeFields = new LimitedTextField[6];
     private LimitedTextField enterNickName = new LimitedTextField();
     private HBox previewLabels = new HBox();
 
-    private class Version {
-
-        private String tag_name;
-
-        public Version(String tag_name){
-            this.tag_name = tag_name;
-        }
-    }
-
-    private class PublishDate {
-
-        private String published_at;
-
-        public PublishDate(String published_at ){
-            this.published_at = published_at;
-        }
-    }
-
-
-
     private void executeCommand(String command) {
         try {
             Process process = Runtime.getRuntime().exec(command);
             process.waitFor();
-        } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
+        } catch (IOException e) {
+            log.log(Level.SEVERE, e.getMessage());
+        } catch (InterruptedException e){
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -171,6 +156,73 @@ public class BlendGUI extends Application {
         return false;
     }
 
+    public void forceLoad(Scene mainScene, MenuItem programTheme, Label[] labelColorPreviews){
+        File tempStore = new File(System.getProperty("user.dir") + "/tempstore.txt");
+        if(!tempStore.exists()) return;
+
+        String[] codes = new String[6];
+
+        try{
+            Runtime.getRuntime().exec("attrib -H \"" +  System.getProperty("user.dir") + "/tempstore.txt\"" );
+        }
+        catch(IOException ex){
+            return;
+        }
+
+        try( FileReader fReader = new FileReader(tempStore); //Basic reader, throws FileNotFoundException
+        BufferedReader bReader = new BufferedReader(fReader);)
+        { 
+            Runtime.getRuntime().exec("attrib -H \"" +  System.getProperty("user.dir") + "/tempstore.txt\"" );
+            //Read the codes
+            for(int i = 0; i < 6; i++) {
+                String line;
+                if((line = bReader.readLine()) != null && isHexOk(line)){
+                    codes[i] = line;
+                }    
+            }
+            for(int i = 0; i < 6; i++) {
+                if(codes[i] != null) codeFields[i].setText(codes[i]);    
+            }
+            enterNickName.setText(bReader.readLine().replace("\n", ""));
+
+            String savedTheme = bReader.readLine();
+            if(savedTheme.equals("DARK")) goDark(mainScene, programTheme, labelColorPreviews);        
+        }
+        catch(IOException | StringIndexOutOfBoundsException e)
+        {
+            log.log(Level.SEVERE, e.getMessage());
+        }
+
+        String deleted = Boolean.toString(tempStore.delete());
+        log.log(Level.ALL, deleted);
+    }
+
+    public void forceSave(){
+
+        File tempStore = new File(System.getProperty("user.dir") + "/tempstore.txt");
+
+        String[] codes = new String[6];
+        for(int i = 0; i < 6; i++) codes[i] = codeFields[i].getText();
+        try( FileWriter fWriter = new FileWriter(tempStore); //Basic reader, throws FileNotFoundException
+        BufferedWriter bWriter = new BufferedWriter(fWriter);)
+        { 
+            for(int i = 0; i < 6; i++){
+                bWriter.write(codes[i] + "\n");
+            }
+            bWriter.write(enterNickName.getText() + "\n");
+            bWriter.write(currentTheme);
+            Runtime.getRuntime().exec("attrib +H \"" +  System.getProperty("user.dir") + "/tempstore.txt\"" );
+        }
+        catch(IOException | StringIndexOutOfBoundsException e)
+        {
+            log.log(Level.SEVERE, e.getMessage());
+
+            Alert errorAlert = new Alert(AlertType.ERROR, "There was an error saving your configuration, please try again.");
+            errorAlert.setHeaderText("Error saving");
+            errorAlert.showAndWait();
+        }
+    }
+
     public void trySave(Stage stage){
 
         int goodCodes = 0;
@@ -205,68 +257,44 @@ public class BlendGUI extends Application {
 
                     log.log(Level.SEVERE, e.getMessage());
 
-                    Alert errorAlert = new Alert(AlertType.ERROR);
+                    Alert errorAlert = new Alert(AlertType.ERROR, "There was an error saving your configuration, please try again.");
                     errorAlert.setHeaderText("Error saving");
-                    errorAlert.setContentText("There was an error saving your configuration, please try again.");
                     errorAlert.showAndWait();
                 }
             }
         }
         else{
-            Alert errorAlert = new Alert(AlertType.ERROR);
+            Alert errorAlert = new Alert(AlertType.ERROR, "You do not have any codes to save. No file was created.");
             errorAlert.setHeaderText("Nothing to save");
-            errorAlert.setContentText("You do not have any codes to save. No file was created.");
             errorAlert.showAndWait();
         }  
        
     }
 
-    public String getJSON(String url, int timeout) {
-        HttpURLConnection c = null;
-        try {
-            URL u = new URL(url);
-            c = (HttpURLConnection) u.openConnection();
-            c.setRequestMethod("GET");
-            c.setRequestProperty("Content-length", "0");
-            c.setUseCaches(false);
-            c.setAllowUserInteraction(false);
-            c.setConnectTimeout(timeout);
-            c.setReadTimeout(timeout);
-            c.connect();
-            int status = c.getResponseCode();
-    
-            switch (status) {
-                case 200:
-                case 201:
-                    BufferedReader br = new BufferedReader(new InputStreamReader(c.getInputStream()));
-                    StringBuilder sb = new StringBuilder();
-                    String line;
-                    while ((line = br.readLine()) != null) {
-                        sb.append(line+"\n");
-                    }
-                    br.close();
-                    return sb.toString();
-            }
-    
-        } catch (MalformedURLException ex) {
-            Logger.getLogger(getClass().getName()).log(Level.SEVERE, null, ex);
-        } catch (IOException ex) {
-            Logger.getLogger(getClass().getName()).log(Level.SEVERE, null, ex);
-        } finally {
-           if (c != null) {
-              try {
-                  c.disconnect();
-              } catch (Exception ex) {
-                 Logger.getLogger(getClass().getName()).log(Level.SEVERE, null, ex);
-              }
-           }
+    public String getJSON(String url) {
+
+        try{
+            JSONObject json = new JSONObject(IOUtils.toString(new URL(url), StandardCharsets.UTF_8));
+            return(json.toString());
         }
-        return null;
+        catch(IOException ex){
+            Alert errorAlert = new Alert(AlertType.ERROR, "An unexpected error occured.");
+            errorAlert.setHeaderText("Error");
+            errorAlert.showAndWait();
+            return null;
+        }
     }
 
-    public boolean isOutOfDate(String latestVersion){
+    public String getTagFromGitJson(String tagName){
+        String json = getJSON("https://api.github.com/repos/DavidArthurCole/bhb/releases/latest");
+        JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
+        return(obj.get(tagName).getAsString());
+    }
+
+    public boolean isOutOfDate(){
         
-        String[] compLatest = latestVersion.split("\\.");
+
+        String[] compLatest = getTagFromGitJson("tag_name").split("\\.");
         String[] compCurrent = VERSION.split("\\.");
 
         return(Integer.parseInt(compCurrent[0]) < Integer.parseInt(compLatest[0]) // X.z.z <- If first digit is less
@@ -276,6 +304,8 @@ public class BlendGUI extends Application {
 
     @Override
     public void start(Stage stage) throws Exception {
+
+        Runtime.getRuntime().addShutdownHook(new Thread(this::forceSave));
 
         MenuBar menuBar = new MenuBar();
         // Menu - File
@@ -288,14 +318,11 @@ public class BlendGUI extends Application {
         loadItem.setOnAction( e -> {
             boolean success = tryLoad(stage);
             if(!success){
-                Alert errorAlert = new Alert(AlertType.ERROR);
+                Alert errorAlert = new Alert(AlertType.ERROR, "The file you selected is not recognized as a valid configuration file. If you believe this is an error, please reach out.");
                 errorAlert.setHeaderText("Invalid configuration file");
-                errorAlert.setContentText("The file you selected is not recognized as a valid configuration file. If you believe this is an error, please reach out.");
                 errorAlert.showAndWait();
             }
         });
-
-        menuFile.getItems().addAll(saveItem, loadItem);
 
         // Menu - Edit
         Menu menuTools = new Menu("Tools");
@@ -319,61 +346,50 @@ public class BlendGUI extends Application {
 
         MenuItem about = new MenuItem("About");
         about.setOnAction(e -> {
-            String json = getJSON("https://api.github.com/repos/DavidArthurCole/bhb/releases/latest", 10000);
-            PublishDate publishDate = new Gson().fromJson(json, PublishDate.class);
+            String publishDate = getTagFromGitJson("published_at");
 
-            Alert aboutAlert = new Alert(AlertType.INFORMATION, "Release date: " + publishDate.published_at.substring(0, publishDate.published_at.length() - 1).replace("T", " "));
+            String releaseDate;
+            if(isOutOfDate()) releaseDate = "Release date unknown";
+            else releaseDate = "Release date: " + publishDate.substring(0, publishDate.length() - 1).replace("T", " ");
+
+            Alert aboutAlert = new Alert(AlertType.INFORMATION, releaseDate);
             aboutAlert.setTitle("About BHB");
             aboutAlert.setHeaderText("Version: " + VERSION);
             aboutAlert.showAndWait();
         });
 
         updateChecker.setOnAction(e -> {
-            //Literally just gets the latest version from the git repo
-            Version latest = new Version("0.0.0");
-            try {
-                String json = getJSON("https://api.github.com/repos/DavidArthurCole/bhb/releases/latest", 10000);
-                latest = new Gson().fromJson(json, Version.class);
-                
-            } catch (Exception ex) {
-                Alert errorAlert = new Alert(AlertType.ERROR);
-                errorAlert.setHeaderText("Unknown error");
-                errorAlert.setTitle("ERROR - REPORT THIS");
-                errorAlert.setContentText("An unknown error has occured. Please report this: " + ex.getMessage());
-                errorAlert.showAndWait();
-            }
-
-            if(isOutOfDate(latest.tag_name)){
+            //Literally just gets the latest version number from the git repo
+            String latest = getTagFromGitJson("tag_name");
+            
+            if(isOutOfDate()){
 
                 ButtonType no = new ButtonType("No", ButtonBar.ButtonData.OK_DONE);
                 ButtonType yes = new ButtonType("Yes", ButtonBar.ButtonData.CANCEL_CLOSE);
 
                 Alert updateAlert = new Alert(AlertType.CONFIRMATION, "An updated version of BHB is available. Current: " 
-                    + VERSION + ", New: " + latest.tag_name + ". Update now? This will restart your program.",
+                    + VERSION + ", New: " + latest + ". Update now? This will restart your program.",
                     no, yes);
                 updateAlert.setHeaderText("Out of date");
                 updateAlert.setTitle("Updates found");
                 Optional<ButtonType> result = updateAlert.showAndWait();
 
-                if(result.orElse(no) == yes){
-                    if(new File(System.getProperty("user.dir") + "/BHB.exe").exists()){
-                        executeCommand("cmd.exe /c cd " +  System.getProperty("user.dir") + " & taskkill /F /PID " + getPID() 
-                            + " & curl -L -O " + "https://github.com/DavidArthurCole/bhb/releases/download/" + latest.tag_name + "/BHB.exe & BHB.exe");
-                    }
+                if(result.orElse(no) == yes && new File(System.getProperty("user.dir") + "/BHB.exe").exists()){
+                    executeCommand("cmd.exe /c cd " +  System.getProperty("user.dir") + " & taskkill /F /PID " + getPID() 
+                        + " & curl -L -O " + "https://github.com/DavidArthurCole/bhb/releases/download/" + latest + "/BHB.exe & BHB.exe");
                 }
             }
             else{
-                Alert updateAlert = new Alert(AlertType.INFORMATION);
+                Alert updateAlert = new Alert(AlertType.INFORMATION, "BHB is up to date, (version " + VERSION + ")");
                 updateAlert.setHeaderText("Up to date");
                 updateAlert.setTitle("No updates found");
-                updateAlert.setContentText("BHB is up to date, (version " + VERSION + ")");
                 updateAlert.showAndWait();
             }
 
         });
 
+        menuFile.getItems().addAll(saveItem, loadItem);
         menuHelp.getItems().addAll(about, updateChecker);
-
         menuTools.getItems().addAll(copyItem, programTheme, slotMachineColors);
 
         menuBar.getMenus().addAll(menuFile, menuTools, menuHelp);
@@ -497,6 +513,8 @@ public class BlendGUI extends Application {
 
         stage.show();
         stage.setResizable(false);
+
+        forceLoad(mainScene, programTheme, previewColorLabels);
     }
 
     public Label makePreviewLabel(){ 
