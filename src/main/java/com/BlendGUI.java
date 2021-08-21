@@ -53,25 +53,63 @@ import org.json.JSONObject;
 //Logging
 import java.util.logging.*;
 
+//Pathing
+import java.nio.file.Paths;
+
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 
 public class BlendGUI extends Application {
 
     //Global
-    private static final String VERSION = "1.2.13";
+    private static final String VERSION = "1.2.16";
 
     private LimitedTextField[] codeFields = new LimitedTextField[6];
     private LimitedTextField enterNickName = new LimitedTextField();
     private HBox previewLabels = new HBox();
 
-    private void executeCommand(String command) {
+    private boolean alreadySaved = false;
+
+    private void executeCommandWindows(String command) {
         try {
             Process process = Runtime.getRuntime().exec(command);
             process.waitFor();
         } catch (IOException e) {
             log.log(Level.SEVERE, e.getMessage());
         } catch (InterruptedException e){
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private void executeCommandLinux(String command) {
+
+        try(FileWriter writer = new FileWriter(new File(System.getProperty("user.dir") + "/Update.sh"))){
+            writer.write(command);
+        }
+        catch(IOException ex){
+            Alert errorAlert = new Alert(AlertType.ERROR, "Error updating, please report this.");
+            errorAlert.setHeaderText(ex.getLocalizedMessage());
+            errorAlert.showAndWait();
+            return;
+        }
+        
+        // -- Linux --
+
+        // Run a shell command
+
+        ProcessBuilder processBuilder = new ProcessBuilder().command("nohup", "sh", "Update.sh");
+
+        try {
+            processBuilder.directory(new File(System.getProperty("user.dir")));
+            processBuilder.redirectErrorStream(false);
+
+            Process updateProcess = processBuilder.start();
+            updateProcess.waitFor();
+    
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        catch(InterruptedException ex){
             Thread.currentThread().interrupt();
         }
     }
@@ -166,13 +204,12 @@ public class BlendGUI extends Application {
             Runtime.getRuntime().exec("attrib -H \"" +  System.getProperty("user.dir") + "/tempstore.txt\"" );
         }
         catch(IOException ex){
-            return;
+            log.log(Level.INFO, "Not a Windows machine.", ex);
         }
 
         try( FileReader fReader = new FileReader(tempStore); //Basic reader, throws FileNotFoundException
         BufferedReader bReader = new BufferedReader(fReader);)
         { 
-            Runtime.getRuntime().exec("attrib -H \"" +  System.getProperty("user.dir") + "/tempstore.txt\"" );
             //Read the codes
             for(int i = 0; i < 6; i++) {
                 String line;
@@ -186,7 +223,7 @@ public class BlendGUI extends Application {
             enterNickName.setText(bReader.readLine().replace("\n", ""));
 
             String savedTheme = bReader.readLine();
-            if(savedTheme.equals("DARK")) goDark(mainScene, programTheme, labelColorPreviews);        
+            if(savedTheme.equals("DARK")) changeTheme(programTheme, mainScene, labelColorPreviews);   
         }
         catch(IOException | StringIndexOutOfBoundsException e)
         {
@@ -199,27 +236,28 @@ public class BlendGUI extends Application {
 
     public void forceSave(){
 
-        File tempStore = new File(System.getProperty("user.dir") + "/tempstore.txt");
-
-        String[] codes = new String[6];
-        for(int i = 0; i < 6; i++) codes[i] = codeFields[i].getText();
-        try( FileWriter fWriter = new FileWriter(tempStore); //Basic reader, throws FileNotFoundException
-        BufferedWriter bWriter = new BufferedWriter(fWriter);)
-        { 
-            for(int i = 0; i < 6; i++){
-                bWriter.write(codes[i] + "\n");
+        if(!alreadySaved){
+            File tempStore = new File(System.getProperty("user.dir") + "/tempstore.txt");
+            String[] codes = new String[6];
+            for(int i = 0; i < 6; i++) codes[i] = codeFields[i].getText();
+            try( FileWriter fWriter = new FileWriter(tempStore); //Basic reader, throws FileNotFoundException
+            BufferedWriter bWriter = new BufferedWriter(fWriter);)
+            { 
+                for(int i = 0; i < 6; i++){
+                    bWriter.write(codes[i] + "\n");
+                }
+                bWriter.write(enterNickName.getText() + "\n");
+                bWriter.write(currentTheme);
+                Runtime.getRuntime().exec("attrib +H \"" +  System.getProperty("user.dir") + "/tempstore.txt\"" );
             }
-            bWriter.write(enterNickName.getText() + "\n");
-            bWriter.write(currentTheme);
-            Runtime.getRuntime().exec("attrib +H \"" +  System.getProperty("user.dir") + "/tempstore.txt\"" );
-        }
-        catch(IOException | StringIndexOutOfBoundsException e)
-        {
-            log.log(Level.SEVERE, e.getMessage());
+            catch(IOException | StringIndexOutOfBoundsException e)
+            {
+                log.log(Level.SEVERE, e.getMessage());
 
-            Alert errorAlert = new Alert(AlertType.ERROR, "There was an error saving your configuration, please try again.");
-            errorAlert.setHeaderText("Error saving");
-            errorAlert.showAndWait();
+                Alert errorAlert = new Alert(AlertType.ERROR, "There was an error saving your configuration, please try again.");
+                errorAlert.setHeaderText("Error saving");
+                errorAlert.showAndWait();
+            }
         }
     }
 
@@ -279,7 +317,7 @@ public class BlendGUI extends Application {
         }
         catch(IOException ex){
             Alert errorAlert = new Alert(AlertType.ERROR, "An unexpected error occured.");
-            errorAlert.setHeaderText("Error");
+            errorAlert.setHeaderText("Error: " + ex.getLocalizedMessage());
             errorAlert.showAndWait();
             return null;
         }
@@ -292,7 +330,6 @@ public class BlendGUI extends Application {
     }
 
     public boolean isOutOfDate(){
-        
 
         String[] compLatest = getTagFromGitJson("tag_name").split("\\.");
         String[] compCurrent = VERSION.split("\\.");
@@ -304,6 +341,9 @@ public class BlendGUI extends Application {
 
     @Override
     public void start(Stage stage) throws Exception {
+
+        File oldUpdater = new File(System.getProperty("user.dir") + "/Update.sh");
+        oldUpdater.delete();
 
         Runtime.getRuntime().addShutdownHook(new Thread(this::forceSave));
 
@@ -359,6 +399,7 @@ public class BlendGUI extends Application {
         });
 
         updateChecker.setOnAction(e -> {
+
             //Literally just gets the latest version number from the git repo
             String latest = getTagFromGitJson("tag_name");
             
@@ -368,16 +409,56 @@ public class BlendGUI extends Application {
                 ButtonType yes = new ButtonType("Yes", ButtonBar.ButtonData.CANCEL_CLOSE);
 
                 Alert updateAlert = new Alert(AlertType.CONFIRMATION, "An updated version of BHB is available. Current: " 
-                    + VERSION + ", New: " + latest + ". Update now? This will restart your program.",
-                    no, yes);
+                    + VERSION + ", New: " + latest + ". Update now? This will restart your program.", no, yes);
+
                 updateAlert.setHeaderText("Out of date");
                 updateAlert.setTitle("Updates found");
                 Optional<ButtonType> result = updateAlert.showAndWait();
 
-                if(result.orElse(no) == yes && new File(System.getProperty("user.dir") + "/BHB.exe").exists()){
-                    executeCommand("cmd.exe /c cd " +  System.getProperty("user.dir") + " & taskkill /F /PID " + getPID() 
-                        + " & curl -L -O " + "https://github.com/DavidArthurCole/bhb/releases/download/" + latest + "/BHB.exe & BHB.exe");
+                if(result.orElse(no) == yes){
+
+                    String osName = System.getProperty("os.name");
+
+                    if(osName.length() >= 7 &&  osName.substring(0, 7).equals("Windows")){
+
+                        Thread saveThread = new Thread(this::forceSave);
+                        saveThread.start();
+                        try { saveThread.join();}
+                        catch (InterruptedException ex) {
+                            Thread.currentThread().interrupt();
+                        }
+                        alreadySaved = true;
+
+                        //If the exe exists, replace it
+                        if(new File(System.getProperty("user.dir") + "/BHB.exe").exists()){
+                            executeCommandWindows("cmd.exe /c cd " +  System.getProperty("user.dir") + " & taskkill /F /PID " + getPID() 
+                                + " & curl -L -O " + "https://github.com/DavidArthurCole/bhb/releases/download/" + latest + "/BHB.exe & BHB.exe");
+                        }
+                        
+                        //If the jar exists, replace it
+                        if(new File(System.getProperty("user.dir") + "/BHB.jar").exists()){
+                            executeCommandWindows("cmd.exe /c cd " +  System.getProperty("user.dir") + " & taskkill /F /PID " + getPID() 
+                                + " & curl -L -O " + "https://github.com/DavidArthurCole/bhb/releases/download/" + latest + "/BHB.jar & java -jar BHB.jar");
+                        }
+                        
+                    }
+                    else if(osName.substring(0,5).equals("Linux")){
+                        Alert latestAlertNew = new Alert(AlertType.ERROR, "Latest at execution point: " + latest);
+                        latestAlertNew.show();
+
+                        executeCommandLinux("#!/bin/bash\n\ncd " + System.getProperty("user.dir") + "\nwget https://github.com/DavidArthurCole/bhb/releases/download/" + latest + "/BHB.jar -O BHB.jar && java -jar BHB.jar " + Long.toString(getPID()));
+                        new Thread(this::forceSave).start();
+                        alreadySaved = true;
+                        System.exit(0);
+                    }
+                    else{
+                        Alert unsupported = new Alert(AlertType.ERROR, "Upgrading not supported on this OS yet.");
+                        unsupported.setHeaderText(osName);
+                        unsupported.showAndWait();
+                    }
+                    
                 }
+
             }
             else{
                 Alert updateAlert = new Alert(AlertType.INFORMATION, "BHB is up to date, (version " + VERSION + ")");
@@ -706,6 +787,19 @@ public class BlendGUI extends Application {
     }
 
     public static void main(String[] args) {
+
+        if(args.length >=1 && args[0] != null){
+
+            ProcessBuilder processBuilder = new ProcessBuilder().command("nohup", "kill", "-9", args[0]);
+            try {
+                processBuilder.directory(new File(System.getProperty("user.dir")));
+                processBuilder.redirectErrorStream(false);
+                processBuilder.start();
+        
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
         launch();
     }
     
