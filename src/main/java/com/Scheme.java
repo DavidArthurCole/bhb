@@ -24,6 +24,10 @@ public class Scheme {
         return this.schemeChars;
     }
 
+    public void setScheme(String[] schemeChars){
+        this.schemeChars = schemeChars;
+    }
+
     @Override
     public String toString(){
         return this.name;

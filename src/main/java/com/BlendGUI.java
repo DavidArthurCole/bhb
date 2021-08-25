@@ -16,7 +16,10 @@ import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextFormatter;
+import javafx.scene.control.Tooltip;
 import javafx.scene.control.Alert.AlertType;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.Border;
@@ -82,8 +85,16 @@ public class BlendGUI extends Application {
     private MenuItem switchStages = new MenuItem("Switch to Colorscheme");
     private BorderPane rootPane = new BorderPane();
 
-    private VBox mainColorschemeBox = new VBox();
+    //For global access, changing disabling between scenes
+    private MenuItem saveItem = new MenuItem("Save");
+    private MenuItem loadItem = new MenuItem("Load");
+    private MenuItem slotMachineColors = new MenuItem("Slot Machine (Seizure Warning)");
+
+    private BorderPane mainColorschemeBox = new BorderPane();
     private VBox mainBox = new VBox();
+
+    private Button copyButton = new Button();
+    private Button copyButtonColorscheme = new Button();
 
     private Scheme[] loadedSchemes = new Scheme[9];
 
@@ -365,6 +376,8 @@ public class BlendGUI extends Application {
 
         schemes.valueProperty().addListener((observable, oldValue, newValue) -> {
             if(enterNickNameColorscheme.getText().length() > 0){
+                generateNewRandomScheme();
+                generateNewRandomHexScheme();
                 updatePreviewColorscheme();
             }  
         });
@@ -393,36 +406,64 @@ public class BlendGUI extends Application {
         initSchemes();
         reloadSchemes();
 
-        VBox nickPreview = new VBox();
-        nickPreview.setBorder(new Border(new BorderStroke(Color.BLACK, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.THIN)));
-        nickPreview.setAlignment(Pos.CENTER);
-
+       
+        Label previewLabel = new Label("Nickname preview:");
+    
         previewLabelsColorscheme.setPrefHeight(defaultPreviewHeight);
         previewLabelsColorscheme.setMinHeight(defaultPreviewHeight);
         previewLabelsColorscheme.setAlignment(Pos.CENTER);
 
-        nickPreview.getChildren().addAll(new Label("Nickname preview:"), previewLabelsColorscheme);
+        BorderPane nickPreview = new BorderPane();
+        nickPreview.setBorder(new Border(new BorderStroke(Color.BLACK, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.THIN)));
+        nickPreview.setTop(previewLabel);
+        nickPreview.setCenter(previewLabelsColorscheme);
+        nickPreview.setBottom(copyButtonColorscheme);
         nickPreview.setMinHeight(defaultPreviewHeight + new Label("L").getHeight() + 10.0);
+        nickPreview.setPadding(new Insets(5));
+        BorderPane.setAlignment(previewLabel, Pos.CENTER);
+        BorderPane.setAlignment(copyButtonColorscheme, Pos.CENTER);
 
         enternick.getChildren().addAll(prompt1, enterNickNameColorscheme);
 
         //Add everything for the "second scene" to the VBox
-        mainColorschemeBox.getChildren().addAll(chooseScheme, enternick, nickPreview);
+        mainColorschemeBox.setTop(enternick);
+        mainColorschemeBox.setCenter(nickPreview);
+        mainColorschemeBox.setBottom(chooseScheme);
     }
 
-    public void switchStages(){
+    public void switchStages(Stage stage){
         if(rootPane.getCenter().equals(mainBox)){
             rootPane.setCenter(mainColorschemeBox);
+            stage.setTitle("Colorscheme V2");
+            //Disable un-used buttons in scene
+            saveItem.setDisable(true);
+            loadItem.setDisable(true);
+            slotMachineColors.setDisable(true);
             switchStages.setText("Switch to BHB");
         }
         else{
+
             rootPane.setCenter(mainBox);
-            switchStages.setText("Switch to Colorscheme");
+            stage.setTitle("Blazin's Hex Blender");
+            //Re-enable used buttons in scene
+            saveItem.setDisable(false);
+            loadItem.setDisable(false);
+            slotMachineColors.setDisable(false);
+            switchStages.setText("Switch to Colorscheme V2");
         }
     }
 
     @Override
     public void start(Stage stage) throws Exception {
+
+        ImageView copyIcon =  new ImageView(new Image(getClass().getResource("copy_black.png").toExternalForm()));
+        copyIcon.setFitWidth(40);
+        copyIcon.setFitHeight(40);
+
+        copyButton = new Button("", copyIcon);
+        copyButton.setTooltip(new Tooltip("Copy nickname to clipboard"));
+        copyButtonColorscheme = new Button("", copyIcon);
+        copyButtonColorscheme.setTooltip(new Tooltip("Copy nickname to clipboard"));
 
         File oldUpdater = new File(System.getProperty("user.dir") + "/Update.sh");
         oldUpdater.delete();
@@ -432,10 +473,8 @@ public class BlendGUI extends Application {
         // Menu - File
         Menu menuFile = new Menu("File");
 
-        MenuItem saveItem = new MenuItem("Save");
         saveItem.setOnAction( e -> trySave(stage));
-
-        MenuItem loadItem = new MenuItem("Load");
+        
         loadItem.setOnAction( e -> {
             boolean success = tryLoad(stage);
             if(!success){
@@ -448,18 +487,9 @@ public class BlendGUI extends Application {
         // Menu - Edit
         Menu menuTools = new Menu("Tools");
 
-        switchStages.setOnAction(e -> switchStages());
+        switchStages.setOnAction(e -> switchStages(stage));
 
-        MenuItem copyItem = new MenuItem("Copy To Clipboard");
-        copyItem.setOnAction( e -> {
-            if(currentNick != null && !currentNick.equals("")){
-                StringSelection stringSelection = new StringSelection(currentNick);
-            Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-            clipboard.setContents(stringSelection, null);
-            }
-        });
-
-        MenuItem slotMachineColors = new MenuItem("Slot Machine (Seizure Warning)");
+        
         slotMachineColors.setOnAction(e -> new SlotMachineColors().start());
 
         MenuItem programTheme = new MenuItem("Dark Mode");
@@ -554,15 +584,35 @@ public class BlendGUI extends Application {
 
         menuFile.getItems().addAll(saveItem, loadItem);
         menuHelp.getItems().addAll(about, updateChecker);
-        menuTools.getItems().addAll(copyItem, programTheme, slotMachineColors, switchStages);
+        menuTools.getItems().addAll(programTheme, slotMachineColors, switchStages);
 
         menuBar.getMenus().addAll(menuFile, menuTools, menuHelp);
         menuBar.setBorder(new Border(new BorderStroke(Color.BLACK, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.THIN)));
         
         previewLabels.setAlignment(Pos.CENTER);
 
+        //Copy button functionality
+        copyButton.setOnAction(e -> {
+            Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+            StringSelection stringSelection = new StringSelection("");
+            if(rootPane.getCenter().equals(mainBox) && currentNick != null && !currentNick.equals("")) stringSelection = new StringSelection(currentNick);
+            else if (currentNickColorScheme != null && !currentNickColorScheme.equals("")) stringSelection = new StringSelection(currentNickColorScheme);
+            clipboard.setContents(stringSelection, null);
+            
+        });
+
+        copyButtonColorscheme.setOnAction(e -> {
+            Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+            StringSelection stringSelection = new StringSelection("");
+            if(rootPane.getCenter().equals(mainBox) && currentNick != null && !currentNick.equals("")) stringSelection = new StringSelection(currentNick);
+            else if (currentNickColorScheme != null && !currentNickColorScheme.equals("")) stringSelection = new StringSelection(currentNickColorScheme);
+            clipboard.setContents(stringSelection, null);
+            
+        });
+
         BorderPane previewCopyPane = new BorderPane();
         previewCopyPane.setMinHeight(50);
+        previewCopyPane.setLeft(copyButton);
         previewCopyPane.setCenter(previewLabels);
         previewCopyPane.setBorder(new Border(new BorderStroke(Color.BLACK, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.THIN)));
         previewCopyPane.setPadding(new Insets(5));
@@ -797,6 +847,8 @@ public class BlendGUI extends Application {
 
         currentNickColorScheme = "";
 
+        StringBuilder nickBuilder = new StringBuilder();
+
         int userInputLength = enterNickNameColorscheme.getText().length();
 
         //Gets the currently selected scheme from the dropdown menu
@@ -805,18 +857,19 @@ public class BlendGUI extends Application {
         //Gets the codes that correspond to the scheme
         String[] schemeCodes = selectedScheme.getScheme();
 
+        int counter = 0;
         //Fills the codearray with the codes
-        for(int i = 0, j = 0; i < userInputLength; ++i, ++j){
+        for(int i = 0; i < userInputLength; ++i, ++counter){
             //Next char to be added
-            if(j >= schemeCodes.length) j = 0;
+            if(counter >= schemeCodes.length) counter = 0;
             if(selectedScheme.getName().equals("Random Hex")){
-                currentNickColorScheme += "&#" + schemeCodes[j] + enterNickNameColorscheme.getText().charAt(i);
+                nickBuilder.append("&#" + schemeCodes[counter] + enterNickNameColorscheme.getText().charAt(i));
             }
             else{
-                currentNickColorScheme += "&" + schemeCodes[j] + enterNickNameColorscheme.getText().charAt(i);
-            }
-            
+                nickBuilder.append("&" + schemeCodes[counter] + enterNickNameColorscheme.getText().charAt(i));
+            }         
         }
+        currentNickColorScheme = nickBuilder.toString();
 
         parseNickToLabelColorscheme(currentNickColorScheme, previewLabelsColorscheme, selectedScheme);
 
@@ -858,7 +911,7 @@ public class BlendGUI extends Application {
         Label previewLabel = new Label(Character.toString(c));
         previewLabel.setTextFill(Color.rgb(Integer.parseInt(hex.substring(0,2), 16), Integer.parseInt(hex.substring(2,4), 16), Integer.parseInt(hex.substring(4,6), 16)));
 
-        double fontSize = Math.floor(650.0 / fullLength);
+        double fontSize = Math.floor(565.0 / fullLength);
         if(fontSize > 30) fontSize = 30;
 
         previewLabel.setFont(new Font("Arial", fontSize));
@@ -874,7 +927,7 @@ public class BlendGUI extends Application {
             previewLabelColorscheme.setTextFill(getColorFromCharacter(color));
         }
         
-        double fontSize = Math.floor(650.0 / fullLength);
+        double fontSize = Math.floor(565.0 / fullLength);
         if(fontSize > 30) fontSize = 30;
 
         previewLabelColorscheme.setFont(new Font("Arial", fontSize));
@@ -917,20 +970,6 @@ public class BlendGUI extends Application {
         }
     }
 
-    public void reloadRandomSchemes(Scheme newSelection){
-
-        String newSelectionName = newSelection.getName();
-
-        schemes.getItems().add(loadedSchemes[7]);
-        schemes.getItems().add(loadedSchemes[8]);
-
-        for(int i = 0; i < schemes.getItems().toArray().length; i++){
-            System.out.println("schemes[" + i + "] = " + schemes.getItems().toArray()[i]);
-        }
-
-        for(Scheme s : loadedSchemes) if(s.getName().equals(newSelectionName)) schemes.getSelectionModel().select(s);
-    }
-
     public void initSchemes(){
 
         loadedSchemes[0] = new Scheme("Rainbow", 7, "c46eab9d5".split("")); //Rainbow
@@ -961,7 +1000,13 @@ public class BlendGUI extends Application {
         }
 
         //Create the scheme
-        loadedSchemes[7] = new Scheme("Random", 32, randomArray);
+        if(loadedSchemes[7] == null){
+            loadedSchemes[7] = new Scheme("Random", 32, randomArray);
+        }
+        else{
+            loadedSchemes[7].setScheme(randomArray);
+        }
+        
     }
 
     private void generateNewRandomHexScheme(){
@@ -972,7 +1017,12 @@ public class BlendGUI extends Application {
         }
 
         //Create the scheme
-        loadedSchemes[8] = new Scheme("Random Hex", 32, randomHexArray);
+        if(loadedSchemes[8] == null){
+            loadedSchemes[8] = new Scheme("Random Hex", 32, randomHexArray);
+        }
+        else{
+            loadedSchemes[8].setScheme(randomHexArray);
+        }
     }
 
     public String generateRandomHex(){
@@ -998,6 +1048,7 @@ public class BlendGUI extends Application {
     }
 
     public void goDark(Scene mainScene, MenuItem programTheme, Label[] labelColorPreviews){
+
         mainScene.getStylesheets().add(getClass().getResource("dark.css").toString());
         programTheme.setText("Light Mode");
         for(int i = 0; i <= 5; i++){
@@ -1005,9 +1056,20 @@ public class BlendGUI extends Application {
                 labelColorPreviews[i].setBackground(new Background(new BackgroundFill(Color.rgb(92, 100, 108), CornerRadii.EMPTY, Insets.EMPTY)));
             }
         }
+
+        ImageView copyIconWhite =  new ImageView(new Image(getClass().getResource("copy_white.png").toExternalForm()));
+        copyIconWhite.setFitWidth(40);
+        copyIconWhite.setFitHeight(40);
+        ImageView copyIconWhite2 =  new ImageView(new Image(getClass().getResource("copy_white.png").toExternalForm()));
+        copyIconWhite2.setFitWidth(40);
+        copyIconWhite2.setFitHeight(40);
+        
+        copyButton.setGraphic(copyIconWhite);
+        copyButtonColorscheme.setGraphic(copyIconWhite2);
     }
 
     public void goLight(Scene mainScene, MenuItem programTheme, Label[] labelColorPreviews){
+
         mainScene.getStylesheets().remove(getClass().getResource("dark.css").toString());
         programTheme.setText("Dark Mode");
         for(int i = 0; i <=5; i++){
@@ -1018,6 +1080,16 @@ public class BlendGUI extends Application {
                     Integer.parseInt("F2",16)), CornerRadii.EMPTY, Insets.EMPTY)));
             }
         }
+
+        ImageView copyIconBlack =  new ImageView(new Image(getClass().getResource("copy_black.png").toExternalForm()));
+        copyIconBlack.setFitWidth(40);
+        copyIconBlack.setFitHeight(40);
+        ImageView copyIconBlack2 =  new ImageView(new Image(getClass().getResource("copy_black.png").toExternalForm()));
+        copyIconBlack2.setFitWidth(40);
+        copyIconBlack2.setFitHeight(40);
+
+        copyButton.setGraphic(copyIconBlack);
+        copyButtonColorscheme.setGraphic(copyIconBlack2);
     }
 
     public static boolean isHexOk(String hex){

@@ -3,6 +3,7 @@ target/*
 src/test/*
 pom.xml
 *.xml
+tempstore.txt
 .classpath
 .project
 .settings/*
