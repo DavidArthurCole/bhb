@@ -48,6 +48,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.Random;
+
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -63,7 +64,7 @@ import java.awt.datatransfer.Clipboard;
 public class BlendGUI extends Application {
 
     //Global current version indicator
-    private static final String VERSION = "1.2.16";
+    private static final String VERSION = "1.3.0";
 
     //Prevents threading errors in some cases
     private boolean alreadySaved = false;
@@ -357,14 +358,17 @@ public class BlendGUI extends Application {
         return(obj.get(tagName).getAsString());
     }
 
-    public boolean isOutOfDate(){
-
-        String[] compLatest = getTagFromGitJson("tag_name").split("\\.");
-        String[] compCurrent = VERSION.split("\\.");
-
-        return(Integer.parseInt(compCurrent[0]) < Integer.parseInt(compLatest[0]) // X.z.z <- If first digit is less
-        || (Integer.parseInt(compCurrent[0]) >= Integer.parseInt(compLatest[0]) && Integer.parseInt(compCurrent[1]) < Integer.parseInt(compLatest[1])) // z.X.z <- If second digit is less
-        || (Integer.parseInt(compCurrent[0]) >= Integer.parseInt(compLatest[0]) && Integer.parseInt(compCurrent[1]) >= Integer.parseInt(compLatest[1]) && Integer.parseInt(compCurrent[2]) < Integer.parseInt(compLatest[2]))); // z.z.X <- If third digit is less
+    public int compareVersions(String v1, String v2) {
+        String[] components1 = v1.split("\\.");
+        String[] components2 = v2.split("\\.");
+        int length = Math.min(components1.length, components2.length);
+        for(int i = 0; i < length; i++) {
+            int result = Integer.compare(Integer.parseInt(components1[i]), Integer.parseInt(components2[i]));
+            if(result != 0) {
+                return result;
+            }
+        }
+        return Integer.compare(components1.length, components2.length);
     }
 
     public void buildSecondaryScene(){
@@ -502,7 +506,7 @@ public class BlendGUI extends Application {
             String publishDate = getTagFromGitJson("published_at");
 
             String releaseDate;
-            if(isOutOfDate()) releaseDate = "Release date unknown";
+            if(compareVersions(VERSION, getTagFromGitJson("tag_name")) == -1) releaseDate = "Release date unknown";
             else releaseDate = "Release date: " + publishDate.substring(0, publishDate.length() - 1).replace("T", " ");
 
             Alert aboutAlert = new Alert(AlertType.INFORMATION, releaseDate);
@@ -516,7 +520,7 @@ public class BlendGUI extends Application {
             //Literally just gets the latest version number from the git repo
             String latest = getTagFromGitJson("tag_name");
             
-            if(isOutOfDate()){
+            if(compareVersions(VERSION, getTagFromGitJson("tag_name")) == -1){
 
                 ButtonType no = new ButtonType("No", ButtonBar.ButtonData.OK_DONE);
                 ButtonType yes = new ButtonType("Yes", ButtonBar.ButtonData.CANCEL_CLOSE);
