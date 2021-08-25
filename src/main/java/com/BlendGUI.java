@@ -68,10 +68,14 @@ public class BlendGUI extends Application {
     //Creates vars to be passed across functions - global variables
     private LimitedTextField[] codeFields = new LimitedTextField[6];
     private LimitedTextField enterNickName = new LimitedTextField();
+    private LimitedTextField enterNickNameColorscheme = new LimitedTextField();
+
     private HBox previewLabels = new HBox();
+    private HBox previewLabelsColorscheme = new HBox();
 
     //Currently in development, porting ColorScheme to BHB
     private Scene mainScene;
+    private ComboBox<Scheme> schemes = new ComboBox<>();
 
     //Used in both stages
     private MenuBar menuBar = new MenuBar();
@@ -80,6 +84,8 @@ public class BlendGUI extends Application {
 
     private VBox mainColorschemeBox = new VBox();
     private VBox mainBox = new VBox();
+
+    private Scheme[] loadedSchemes = new Scheme[9];
 
     private void executeCommandWindows(String command) {
         try {
@@ -105,7 +111,6 @@ public class BlendGUI extends Application {
         }
         
         // -- Linux --
-
         // Run a shell command
 
         ProcessBuilder processBuilder = new ProcessBuilder().command("nohup", "sh", "Update.sh");
@@ -165,6 +170,7 @@ public class BlendGUI extends Application {
     Label[] previewColorLabels = new Label[6];
 
     protected String currentNick;
+    protected String currentNickColorScheme;
     protected LimitedTextField lastField;
 
     protected static double defaultPreviewHeight;
@@ -355,7 +361,13 @@ public class BlendGUI extends Application {
         HBox chooseScheme = new HBox();
 
         Label prompt = new Label("Choose a scheme: ");
-        ComboBox<Scheme> schemes = new ComboBox<>();
+        schemes.setMinWidth(140);
+
+        schemes.valueProperty().addListener((observable, oldValue, newValue) -> {
+            if(enterNickNameColorscheme.getText().length() > 0){
+                updatePreviewColorscheme();
+            }  
+        });
 
         chooseScheme.getChildren().addAll(prompt, schemes);
         chooseScheme.setBorder(new Border(new BorderStroke(Color.BLACK, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.THIN)));
@@ -363,7 +375,39 @@ public class BlendGUI extends Application {
         chooseScheme.setAlignment(Pos.CENTER);
         chooseScheme.setSpacing(3);
 
-        mainColorschemeBox.getChildren().addAll(chooseScheme);
+        HBox enternick = new HBox();
+        Label prompt1 = new Label("Enter a nickname: ");
+
+        enterNickNameColorscheme.setRestrict("[A-Za-z0-9_]");
+        enterNickNameColorscheme.setPrefWidth(275);
+        enterNickNameColorscheme.textProperty().addListener((observable, oldValue, newValue) -> {
+            if(schemes.getValue() != null){
+                updatePreviewColorscheme();
+            }
+        });
+        enternick.setBorder(new Border(new BorderStroke(Color.BLACK, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.THIN)));
+        enternick.setPadding(new Insets(5));
+        enternick.setAlignment(Pos.CENTER);
+        enternick.setSpacing(3);
+
+        initSchemes();
+        reloadSchemes();
+
+        VBox nickPreview = new VBox();
+        nickPreview.setBorder(new Border(new BorderStroke(Color.BLACK, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.THIN)));
+        nickPreview.setAlignment(Pos.CENTER);
+
+        previewLabelsColorscheme.setPrefHeight(defaultPreviewHeight);
+        previewLabelsColorscheme.setMinHeight(defaultPreviewHeight);
+        previewLabelsColorscheme.setAlignment(Pos.CENTER);
+
+        nickPreview.getChildren().addAll(new Label("Nickname preview:"), previewLabelsColorscheme);
+        nickPreview.setMinHeight(defaultPreviewHeight + new Label("L").getHeight() + 10.0);
+
+        enternick.getChildren().addAll(prompt1, enterNickNameColorscheme);
+
+        //Add everything for the "second scene" to the VBox
+        mainColorschemeBox.getChildren().addAll(chooseScheme, enternick, nickPreview);
     }
 
     public void switchStages(){
@@ -513,6 +557,7 @@ public class BlendGUI extends Application {
         menuTools.getItems().addAll(copyItem, programTheme, slotMachineColors, switchStages);
 
         menuBar.getMenus().addAll(menuFile, menuTools, menuHelp);
+        menuBar.setBorder(new Border(new BorderStroke(Color.BLACK, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.THIN)));
         
         previewLabels.setAlignment(Pos.CENTER);
 
@@ -534,7 +579,7 @@ public class BlendGUI extends Application {
         VBox codes = new VBox(makeCodeBox(1), makeCodeBox(2), makeCodeBox(3), makeCodeBox(4), makeCodeBox(5), makeCodeBox(6), clearAllCodes);
 
         unlockFields();
-                               
+                       
         codes.setBorder(new Border(new BorderStroke(Color.BLACK, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.THIN)));
         codes.setPadding(new Insets(5));
         codes.setAlignment(Pos.CENTER);
@@ -676,9 +721,7 @@ public class BlendGUI extends Application {
         newField.setFont(new Font(defaultFont, 14));
 
         newField.setMaxLength(6);
-
         newField.pressedProperty().addListener(listener -> lastField = newField);
-
         newField.focusedProperty().addListener(listener -> lastField = newField);
 
         newField.textProperty().addListener((observable, oldValue, newValue) -> {
@@ -750,6 +793,36 @@ public class BlendGUI extends Application {
         currentNick = "";
     }
 
+    public void updatePreviewColorscheme(){
+
+        currentNickColorScheme = "";
+
+        int userInputLength = enterNickNameColorscheme.getText().length();
+
+        //Gets the currently selected scheme from the dropdown menu
+        Scheme selectedScheme = schemes.getValue();
+
+        //Gets the codes that correspond to the scheme
+        String[] schemeCodes = selectedScheme.getScheme();
+
+        //Fills the codearray with the codes
+        for(int i = 0, j = 0; i < userInputLength; ++i, ++j){
+            //Next char to be added
+            if(j >= schemeCodes.length) j = 0;
+            if(selectedScheme.getName().equals("Random Hex")){
+                currentNickColorScheme += "&#" + schemeCodes[j] + enterNickNameColorscheme.getText().charAt(i);
+            }
+            else{
+                currentNickColorScheme += "&" + schemeCodes[j] + enterNickNameColorscheme.getText().charAt(i);
+            }
+            
+        }
+
+        parseNickToLabelColorscheme(currentNickColorScheme, previewLabelsColorscheme, selectedScheme);
+
+        previewLabelsColorscheme.setPrefHeight(defaultPreviewHeight);
+    }
+
     public static void parseNickToLabel(String nick, HBox previewLabels){
 
         previewLabels.getChildren().clear();
@@ -759,6 +832,26 @@ public class BlendGUI extends Application {
             previewLabels.getChildren().add(makePreviewLabel(comp[i].charAt(6), comp[i].substring(0,6),  (comp.length - 1)));
         }
 
+    }
+
+    public static void parseNickToLabelColorscheme(String nick, HBox previewLabelsColorscheme, Scheme selectedScheme){
+
+        previewLabelsColorscheme.getChildren().clear();
+
+        if(selectedScheme.getName().equals("Random Hex")){
+            String[] comp = nick.split("&#");
+
+            for(int i = 1; i < comp.length; i++){
+                previewLabelsColorscheme.getChildren().add(makePreviewLabelColorscheme(comp[i].charAt(6), comp[i].substring(0,6), (comp.length - 1)));
+            }
+        }
+        else{
+            String[] comp = nick.split("&");
+
+            for(int i = 1; i < comp.length; i++){
+                previewLabelsColorscheme.getChildren().add(makePreviewLabelColorscheme(comp[i].charAt(1), Character.toString(comp[i].charAt(0)), (comp.length - 1)));
+            }
+        }
     }
 
     public static Label makePreviewLabel(char c, String hex, int fullLength){
@@ -772,9 +865,120 @@ public class BlendGUI extends Application {
         return previewLabel;
     }
 
+    public static Label makePreviewLabelColorscheme(char c, String color, int fullLength){
+        Label previewLabelColorscheme = new Label(Character.toString(c));
+        if(color.length() > 1){
+            previewLabelColorscheme.setTextFill(Color.rgb(Integer.parseInt(color.substring(0,2), 16), Integer.parseInt(color.substring(2,4), 16), Integer.parseInt(color.substring(4,6), 16)));
+        }
+        else{
+            previewLabelColorscheme.setTextFill(getColorFromCharacter(color));
+        }
+        
+        double fontSize = Math.floor(650.0 / fullLength);
+        if(fontSize > 30) fontSize = 30;
+
+        previewLabelColorscheme.setFont(new Font("Arial", fontSize));
+        return previewLabelColorscheme;
+    }
+
+    public static Color getColorFromCharacter(String c){
+
+        String hex;
+        
+        switch(c){
+            case "0": hex = "000000"; break; //Black
+            case "1": hex = "0000AA"; break; //Dark blue
+            case "2": hex = "00AA00"; break; //Dark green
+            case "3": hex = "00AAAA"; break; //Dark aqua
+            case "4": hex = "AA0000"; break; //Dark red
+            case "5": hex = "AA00AA"; break; //Dark purple
+            case "6": hex = "FFAA00"; break; //Gold
+            case "7": hex = "AAAAAA"; break; //Gray
+            case "8": hex = "555555"; break; //Dark gray
+            case "9": hex = "5555FF"; break; //Blue
+            
+            case "a": hex = "55FF55"; break; //Green
+            case "b": hex = "55FFFF"; break; //Aqua
+            case "c": hex = "FF5555"; break; //Red
+            case "d": hex = "FF55FF"; break; //Light purple
+            case "e": hex = "FFFF55"; break; //Yellow
+            case "f": hex = "FFFFFF"; break; //White
+
+            default: hex = "FFFFFF"; // i stg if vscode doesn't stop screaming at me about unconstructed strings i'm gonna lose my damn mind
+        }
+
+        return Color.rgb(Integer.parseInt(hex.substring(0,2), 16), Integer.parseInt(hex.substring(2,4), 16), Integer.parseInt(hex.substring(4,6), 16));
+    }
+
+    public void reloadSchemes(){
+        schemes.getItems().clear();
+        for(int i = 0; i < loadedSchemes.length; i++){
+            schemes.getItems().add(loadedSchemes[i]);
+        }
+    }
+
+    public void reloadRandomSchemes(Scheme newSelection){
+
+        String newSelectionName = newSelection.getName();
+
+        schemes.getItems().add(loadedSchemes[7]);
+        schemes.getItems().add(loadedSchemes[8]);
+
+        for(int i = 0; i < schemes.getItems().toArray().length; i++){
+            System.out.println("schemes[" + i + "] = " + schemes.getItems().toArray()[i]);
+        }
+
+        for(Scheme s : loadedSchemes) if(s.getName().equals(newSelectionName)) schemes.getSelectionModel().select(s);
+    }
+
+    public void initSchemes(){
+
+        loadedSchemes[0] = new Scheme("Rainbow", 7, "c46eab9d5".split("")); //Rainbow
+        loadedSchemes[1] = new Scheme("Master", 6, "4cffff".split("")); //Master
+        loadedSchemes[2] = new Scheme("Ordered", 16, "0123456789abcdef".split("")); //Ordered
+        loadedSchemes[3] = new Scheme("Millionaire", 11, "666eeefff".split("")); //Millionaire
+        loadedSchemes[4] = new Scheme("Phoenix", 7, "4c6ef78".split("")); //Phoenix
+        loadedSchemes[5] = new Scheme("Dragon", 6, "55da22".split("")); //Dragon
+        loadedSchemes[6] = new Scheme("Bacon", 5, "c6666".split("")); //Bacon
+        // loadedSchemes[7] and loadedSchemes[8] are reserved!
+        //DO NOT ADD SCHEMES TO POS 7 OR 8 THIS WILL GO HORRIBLY WRONG 
+
+        //Make the random scheme different every time
+        generateNewRandomScheme();
+
+        //Make the random hex scheme different every time
+        generateNewRandomHexScheme();
+    }
+
+    private void generateNewRandomScheme(){
+
+        Random randomSeed = new Random();
+        Random random = new Random(randomSeed.nextInt(Integer.MAX_VALUE));
+
+        String[] randomArray = new String[32];
+        for(int i = 0; i < 32; ++i){
+            randomArray[i] = Character.toString("0123456789abcdef".charAt(random.nextInt(15)));
+        }
+
+        //Create the scheme
+        loadedSchemes[7] = new Scheme("Random", 32, randomArray);
+    }
+
+    private void generateNewRandomHexScheme(){
+        
+        String[] randomHexArray = new String[32];
+        for(int i = 0; i < 32; ++i){
+            randomHexArray[i] = generateRandomHex();
+        }
+
+        //Create the scheme
+        loadedSchemes[8] = new Scheme("Random Hex", 32, randomHexArray);
+    }
+
     public String generateRandomHex(){
 
-        Random random = new Random();
+        Random randomSeed = new Random();
+        Random random = new Random(randomSeed.nextInt(Integer.MAX_VALUE));
         StringBuilder rndHex = new StringBuilder();
 
         for (int i = 0; i < 6; i++) rndHex.append("ABCDEF0123456789".charAt(random.nextInt(16)));

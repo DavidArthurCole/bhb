@@ -4,9 +4,9 @@ public class Scheme {
     
     private String name;
     private int length;
-    private char[] schemeChars;
+    private String[] schemeChars;
 
-    public Scheme(String name, int length, char[] schemeChars){
+    public Scheme(String name, int length, String[] schemeChars){
         this.name = name;
         this.length = length;
         this.schemeChars = schemeChars;
@@ -20,8 +20,13 @@ public class Scheme {
         return this.length;
     }
 
-    public char[] getScheme(){
+    public String[] getScheme(){
         return this.schemeChars;
+    }
+
+    @Override
+    public String toString(){
+        return this.name;
     }
 
 }
