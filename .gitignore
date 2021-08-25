@@ -2,6 +2,7 @@
 target/*
 src/test/*
 pom.xml
+*.xml
 .classpath
 .project
 .settings/*

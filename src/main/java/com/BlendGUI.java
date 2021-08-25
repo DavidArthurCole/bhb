@@ -10,6 +10,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ColorPicker;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
@@ -53,22 +54,32 @@ import org.json.JSONObject;
 //Logging
 import java.util.logging.*;
 
-//Pathing
-import java.nio.file.Paths;
-
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 
 public class BlendGUI extends Application {
 
-    //Global
+    //Global current version indicator
     private static final String VERSION = "1.2.16";
 
+    //Prevents threading errors in some cases
+    private boolean alreadySaved = false;
+
+    //Creates vars to be passed across functions - global variables
     private LimitedTextField[] codeFields = new LimitedTextField[6];
     private LimitedTextField enterNickName = new LimitedTextField();
     private HBox previewLabels = new HBox();
 
-    private boolean alreadySaved = false;
+    //Currently in development, porting ColorScheme to BHB
+    private Scene mainScene;
+
+    //Used in both stages
+    private MenuBar menuBar = new MenuBar();
+    private MenuItem switchStages = new MenuItem("Switch to Colorscheme");
+    private BorderPane rootPane = new BorderPane();
+
+    private VBox mainColorschemeBox = new VBox();
+    private VBox mainBox = new VBox();
 
     private void executeCommandWindows(String command) {
         try {
@@ -339,6 +350,33 @@ public class BlendGUI extends Application {
         || (Integer.parseInt(compCurrent[0]) >= Integer.parseInt(compLatest[0]) && Integer.parseInt(compCurrent[1]) >= Integer.parseInt(compLatest[1]) && Integer.parseInt(compCurrent[2]) < Integer.parseInt(compLatest[2]))); // z.z.X <- If third digit is less
     }
 
+    public void buildSecondaryScene(){
+        
+        HBox chooseScheme = new HBox();
+
+        Label prompt = new Label("Choose a scheme: ");
+        ComboBox<Scheme> schemes = new ComboBox<>();
+
+        chooseScheme.getChildren().addAll(prompt, schemes);
+        chooseScheme.setBorder(new Border(new BorderStroke(Color.BLACK, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.THIN)));
+        chooseScheme.setPadding(new Insets(5));
+        chooseScheme.setAlignment(Pos.CENTER);
+        chooseScheme.setSpacing(3);
+
+        mainColorschemeBox.getChildren().addAll(chooseScheme);
+    }
+
+    public void switchStages(){
+        if(rootPane.getCenter().equals(mainBox)){
+            rootPane.setCenter(mainColorschemeBox);
+            switchStages.setText("Switch to BHB");
+        }
+        else{
+            rootPane.setCenter(mainBox);
+            switchStages.setText("Switch to Colorscheme");
+        }
+    }
+
     @Override
     public void start(Stage stage) throws Exception {
 
@@ -347,7 +385,6 @@ public class BlendGUI extends Application {
 
         Runtime.getRuntime().addShutdownHook(new Thread(this::forceSave));
 
-        MenuBar menuBar = new MenuBar();
         // Menu - File
         Menu menuFile = new Menu("File");
 
@@ -366,6 +403,8 @@ public class BlendGUI extends Application {
 
         // Menu - Edit
         Menu menuTools = new Menu("Tools");
+
+        switchStages.setOnAction(e -> switchStages());
 
         MenuItem copyItem = new MenuItem("Copy To Clipboard");
         copyItem.setOnAction( e -> {
@@ -471,12 +510,9 @@ public class BlendGUI extends Application {
 
         menuFile.getItems().addAll(saveItem, loadItem);
         menuHelp.getItems().addAll(about, updateChecker);
-        menuTools.getItems().addAll(copyItem, programTheme, slotMachineColors);
+        menuTools.getItems().addAll(copyItem, programTheme, slotMachineColors, switchStages);
 
         menuBar.getMenus().addAll(menuFile, menuTools, menuHelp);
-
-        VBox mainBox = new VBox();
-
         
         previewLabels.setAlignment(Pos.CENTER);
 
@@ -581,16 +617,20 @@ public class BlendGUI extends Application {
 
         mainBox.getChildren().addAll(codesAndPicker, nickInput, previewCopyPane);
 
-        Scene mainScene = new Scene(mainBox);
-        ((VBox)mainScene.getRoot()).getChildren().addAll(menuBar);
-
         programTheme.setOnAction(e-> changeTheme(programTheme, mainScene, previewColorLabels));
 
         menuBar.toBack();
         mainBox.toFront();
 
+        rootPane.setTop(menuBar);
+        rootPane.setCenter(mainBox);
+
+        mainScene = new Scene(rootPane);
+
         stage.setScene(mainScene);
         stage.setTitle("Blazin's Hex Blender");
+
+        buildSecondaryScene();
 
         stage.show();
         stage.setResizable(false);
