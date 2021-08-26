@@ -55,7 +55,6 @@ import com.google.gson.JsonParser;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
 
-//Logging
 import java.util.logging.*;
 
 import java.awt.Toolkit;
@@ -66,39 +65,41 @@ public class BlendGUI extends Application {
     //Global current version indicator
     private static final String VERSION = "1.3.0";
 
+    private String currentTheme = "LIGHT";
+    private String defaultFont = "Arial";
+    protected String currentNick;
+    protected String currentNickColorScheme;
+
+    protected static double defaultPreviewHeight;
+
+    private Logger log = Logger.getLogger(BlendGUI.class.getSimpleName());
+
     //Prevents threading errors in some cases
     private boolean alreadySaved = false;
 
-    //Creates vars to be passed across functions - global variables
+    //For global access, changing disabling between scenes
+    private BorderPane rootPane = new BorderPane();
+    private Button copyButton = new Button();
+    private Button copyButtonColorscheme = new Button();
+    private ComboBox<Scheme> schemes = new ComboBox<>();
+    private HBox previewLabels = new HBox();
+    private HBox previewLabelsColorscheme = new HBox();
+    private Label[] previewColorLabels = new Label[6];
+    protected LimitedTextField lastField;
     private LimitedTextField[] codeFields = new LimitedTextField[6];
     private LimitedTextField enterNickName = new LimitedTextField();
     private LimitedTextField enterNickNameColorscheme = new LimitedTextField();
-
-    private HBox previewLabels = new HBox();
-    private HBox previewLabelsColorscheme = new HBox();
-
-    //Currently in development, porting ColorScheme to BHB
-    private Scene mainScene;
-    private ComboBox<Scheme> schemes = new ComboBox<>();
-
-    //Used in both stages
     private MenuBar menuBar = new MenuBar();
-    private MenuItem switchStages = new MenuItem("Switch to Colorscheme");
-    private BorderPane rootPane = new BorderPane();
-
-    //For global access, changing disabling between scenes
     private MenuItem saveItem = new MenuItem("Save");
     private MenuItem loadItem = new MenuItem("Load");
+    private MenuItem switchStages = new MenuItem("Switch to Colorscheme");
     private MenuItem slotMachineColors = new MenuItem("Slot Machine (Seizure Warning)");
-
     private BorderPane mainColorschemeBox = new BorderPane();
     private VBox mainBox = new VBox();
-
-    private Button copyButton = new Button();
-    private Button copyButtonColorscheme = new Button();
-
+    private Scene mainScene;
     private Scheme[] loadedSchemes = new Scheme[9];
 
+    //Run a command asynchronously, outside of the JVM on Windows
     private void executeCommandWindows(String command) {
         try {
             Process process = Runtime.getRuntime().exec(command);
@@ -110,6 +111,7 @@ public class BlendGUI extends Application {
         }
     }
 
+    //Roundabout way to execute a command separate from the JVM on linux
     private void executeCommandLinux(String command) {
 
         try(FileWriter writer = new FileWriter(new File(System.getProperty("user.dir") + "/Update.sh"))){
@@ -142,6 +144,7 @@ public class BlendGUI extends Application {
         }
     }
 
+    //Returns the working PID of the JVM on all OS-es
     public static long getPID() {
         String processName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
         if (processName != null && processName.length() > 0) {
@@ -156,16 +159,19 @@ public class BlendGUI extends Application {
         return 0;
     }
 
+    //Class extension needed for smooth animation
     private class SlotMachineColors extends AnimationTimer {
 
         private double progress;
         private LimitedTextField[] codeField;
 
+        //Code field are passed as reference for filling use
         public SlotMachineColors(){
             this.codeField = codeFields;
             this.progress = 0;
         }
 
+        //Per the counter, decide if certain bars should stop being cycled
         @Override
         public void handle(long now) {
             if(this.progress % 2 != 0) for(int c = 5; c >= (int)Math.floor(progress / 30); --c) codeField[c].setText(generateRandomHex());  
@@ -174,26 +180,18 @@ public class BlendGUI extends Application {
         }
     }
 
-    String currentTheme = "LIGHT";
-
-    Logger log = Logger.getLogger(BlendGUI.class.getSimpleName());
-    String defaultFont = "Arial";
-
-    Label[] previewColorLabels = new Label[6];
-
-    protected String currentNick;
-    protected String currentNickColorScheme;
-    protected LimitedTextField lastField;
-
-    protected static double defaultPreviewHeight;
-
+    //Non-intrusive loading, will not force
     public boolean tryLoad(Stage stage){
 
+        //Sto codes from file
         String[] codes = new String[6];
 
+        //Create a new dialog
         FileChooser configChooser = new FileChooser();
+        //Configure to only allow TXT files ~ set the title
         configChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("BHB Configs (.txt)", "*.txt"));
         configChooser.setTitle("Open configuration file");
+        //Open the dialog
         File configFile = configChooser.showOpenDialog(stage);
         if(configFile != null){
             for(int i = 0; i < 6; i++) codeFields[i].setText("");
@@ -207,14 +205,17 @@ public class BlendGUI extends Application {
                         if(isHexOk(line)){
                             codes[i] = line;
                         }
+                        //Error in file reading - invalid chars reached
                         else return false;
                     }    
                 }
+                //Even if codes are null, should allow a pass here
                 for(int i = 0; i < 6; i++) {
                     if(codes[i] != null) codeFields[i].setText(codes[i]);    
                 }
                 return true;
             }
+            //Catch various IO errors from reading the files
             catch(IOException | StringIndexOutOfBoundsException e)
             {
                 log.log(Level.SEVERE, e.getMessage());
@@ -223,12 +224,17 @@ public class BlendGUI extends Application {
         return false;
     }
 
+    //Intrusive loading technique, will disrupt the program's functionality temporarily
     public void forceLoad(Scene mainScene, MenuItem programTheme, Label[] labelColorPreviews){
+
+        //Create a temporary reference to the file
         File tempStore = new File(System.getProperty("user.dir") + "/tempstore.txt");
         if(!tempStore.exists()) return;
 
+        //Create a store for codes
         String[] codes = new String[6];
 
+        //try to make the file readable ~ Will only work on Windows
         try{
             Runtime.getRuntime().exec("attrib -H \"" +  System.getProperty("user.dir") + "/tempstore.txt\"" );
         }
@@ -236,6 +242,7 @@ public class BlendGUI extends Application {
             log.log(Level.INFO, "Not a Windows machine.", ex);
         }
 
+        //Create a new instances of the reader
         try( FileReader fReader = new FileReader(tempStore); //Basic reader, throws FileNotFoundException
         BufferedReader bReader = new BufferedReader(fReader);)
         { 
@@ -251,6 +258,7 @@ public class BlendGUI extends Application {
             }
             enterNickName.setText(bReader.readLine().replace("\n", ""));
 
+            //Set theme based on config
             String savedTheme = bReader.readLine();
             if(savedTheme.equals("DARK")) changeTheme(programTheme, mainScene, labelColorPreviews);   
         }
@@ -259,37 +267,12 @@ public class BlendGUI extends Application {
             log.log(Level.SEVERE, e.getMessage());
         }
 
+        //Delete the file once loaded
         String deleted = Boolean.toString(tempStore.delete());
         log.log(Level.ALL, deleted);
     }
 
-    public void forceSave(){
-
-        if(!alreadySaved){
-            File tempStore = new File(System.getProperty("user.dir") + "/tempstore.txt");
-            String[] codes = new String[6];
-            for(int i = 0; i < 6; i++) codes[i] = codeFields[i].getText();
-            try( FileWriter fWriter = new FileWriter(tempStore); //Basic reader, throws FileNotFoundException
-            BufferedWriter bWriter = new BufferedWriter(fWriter);)
-            { 
-                for(int i = 0; i < 6; i++){
-                    bWriter.write(codes[i] + "\n");
-                }
-                bWriter.write(enterNickName.getText() + "\n");
-                bWriter.write(currentTheme);
-                Runtime.getRuntime().exec("attrib +H \"" +  System.getProperty("user.dir") + "/tempstore.txt\"" );
-            }
-            catch(IOException | StringIndexOutOfBoundsException e)
-            {
-                log.log(Level.SEVERE, e.getMessage());
-
-                Alert errorAlert = new Alert(AlertType.ERROR, "There was an error saving your configuration, please try again.");
-                errorAlert.setHeaderText("Error saving");
-                errorAlert.showAndWait();
-            }
-        }
-    }
-
+    //Non-intrusive saving, will not force
     public void trySave(Stage stage){
 
         int goodCodes = 0;
@@ -338,6 +321,35 @@ public class BlendGUI extends Application {
        
     }
 
+    //Intrusive saving technique, will disrupt the program's functionality temporarily
+    public void forceSave(){
+
+        if(!alreadySaved){
+            File tempStore = new File(System.getProperty("user.dir") + "/tempstore.txt");
+            String[] codes = new String[6];
+            for(int i = 0; i < 6; i++) codes[i] = codeFields[i].getText();
+            try( FileWriter fWriter = new FileWriter(tempStore); //Basic reader, throws FileNotFoundException
+            BufferedWriter bWriter = new BufferedWriter(fWriter);)
+            { 
+                for(int i = 0; i < 6; i++){
+                    bWriter.write(codes[i] + "\n");
+                }
+                bWriter.write(enterNickName.getText() + "\n");
+                bWriter.write(currentTheme);
+                Runtime.getRuntime().exec("attrib +H \"" +  System.getProperty("user.dir") + "/tempstore.txt\"" );
+            }
+            catch(IOException | StringIndexOutOfBoundsException e)
+            {
+                log.log(Level.SEVERE, e.getMessage());
+
+                Alert errorAlert = new Alert(AlertType.ERROR, "There was an error saving your configuration, please try again.");
+                errorAlert.setHeaderText("Error saving");
+                errorAlert.showAndWait();
+            }
+        }
+    }
+
+    //Parses JSON from a url
     public String getJSON(String url) {
 
         try{
@@ -352,12 +364,14 @@ public class BlendGUI extends Application {
         }
     }
 
+    //Pulls one tag from a json string
     public String getTagFromGitJson(String tagName){
         String json = getJSON("https://api.github.com/repos/DavidArthurCole/bhb/releases/latest");
         JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
         return(obj.get(tagName).getAsString());
     }
 
+    //Compare two version numbers - returns -1 if v1 < v2
     public int compareVersions(String v1, String v2) {
         String[] components1 = v1.split("\\.");
         String[] components2 = v2.split("\\.");
@@ -371,7 +385,8 @@ public class BlendGUI extends Application {
         return Integer.compare(components1.length, components2.length);
     }
 
-    public void buildSecondaryScene(){
+    //Builds components for colorscheme
+    public void buildColorscheme(){
         
         HBox chooseScheme = new HBox();
 
@@ -435,6 +450,7 @@ public class BlendGUI extends Application {
         mainColorschemeBox.setBottom(chooseScheme);
     }
 
+    //Switch between BHB and Colorscheme
     public void switchStages(Stage stage){
         if(rootPane.getCenter().equals(mainBox)){
             rootPane.setCenter(mainColorschemeBox);
@@ -457,6 +473,7 @@ public class BlendGUI extends Application {
         }
     }
 
+    //Start the program
     @Override
     public void start(Stage stage) throws Exception {
 
@@ -729,7 +746,7 @@ public class BlendGUI extends Application {
         stage.setScene(mainScene);
         stage.setTitle("Blazin's Hex Blender");
 
-        buildSecondaryScene();
+        buildColorscheme();
 
         stage.show();
         stage.setResizable(false);
@@ -737,6 +754,7 @@ public class BlendGUI extends Application {
         forceLoad(mainScene, programTheme, previewColorLabels);
     }
 
+    //Factory for creating previews labels
     public Label makePreviewLabel(){ 
         Label newLabel = new Label("     ");
         newLabel.setBorder(new Border(new BorderStroke(Color.BLACK, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.THIN)));
@@ -744,6 +762,7 @@ public class BlendGUI extends Application {
         return newLabel;
     }
 
+    //Factory for code box containers in BHB
     public HBox makeCodeBox(int id){
         Label codeId = new Label("Code " + id + ": ");
         Label codeColorPreview = makePreviewLabel();
@@ -768,6 +787,7 @@ public class BlendGUI extends Application {
         return newBox;
     }
 
+    //Factory for code boxes in BHB
     public LimitedTextField makeTextField(Label previewLabel, int id){
         LimitedTextField newField = new LimitedTextField();      
 
@@ -806,6 +826,7 @@ public class BlendGUI extends Application {
         return newField;
     }
 
+    //Unlock fields
     public void unlockFields(){
 
         for(int i = 0; i < 6; i++){
@@ -818,6 +839,7 @@ public class BlendGUI extends Application {
 
     }
 
+    //Update font size based on how much text there is
     public static void updateTextFieldFontSize(LimitedTextField field){
         if(field.getText().length() > 0){
             int fontSize = 85 / field.getText().length();
@@ -826,6 +848,7 @@ public class BlendGUI extends Application {
         }    
     }
 
+    //Update the preview with new text or new codes
     public void updatePreview(){
 
         int userInputLength = enterNickName.getText().length();
@@ -847,6 +870,7 @@ public class BlendGUI extends Application {
         currentNick = "";
     }
 
+    //Colorscheme version of ^
     public void updatePreviewColorscheme(){
 
         currentNickColorScheme = "";
@@ -880,6 +904,7 @@ public class BlendGUI extends Application {
         previewLabelsColorscheme.setPrefHeight(defaultPreviewHeight);
     }
 
+    //Create preview label coundaries based on a formatted nick
     public static void parseNickToLabel(String nick, HBox previewLabels){
 
         previewLabels.getChildren().clear();
@@ -891,6 +916,7 @@ public class BlendGUI extends Application {
 
     }
 
+    //Colorscheme version of ^
     public static void parseNickToLabelColorscheme(String nick, HBox previewLabelsColorscheme, Scheme selectedScheme){
 
         previewLabelsColorscheme.getChildren().clear();
@@ -911,6 +937,7 @@ public class BlendGUI extends Application {
         }
     }
 
+    //Create labels given the boundaries created by parseNickToLabel(...)
     public static Label makePreviewLabel(char c, String hex, int fullLength){
         Label previewLabel = new Label(Character.toString(c));
         previewLabel.setTextFill(Color.rgb(Integer.parseInt(hex.substring(0,2), 16), Integer.parseInt(hex.substring(2,4), 16), Integer.parseInt(hex.substring(4,6), 16)));
@@ -922,6 +949,7 @@ public class BlendGUI extends Application {
         return previewLabel;
     }
 
+    //Colorscheme version of ^
     public static Label makePreviewLabelColorscheme(char c, String color, int fullLength){
         Label previewLabelColorscheme = new Label(Character.toString(c));
         if(color.length() > 1){
@@ -938,6 +966,7 @@ public class BlendGUI extends Application {
         return previewLabelColorscheme;
     }
 
+    //Lookup table to return a hex Color [obj] from a char
     public static Color getColorFromCharacter(String c){
 
         String hex;
@@ -967,6 +996,7 @@ public class BlendGUI extends Application {
         return Color.rgb(Integer.parseInt(hex.substring(0,2), 16), Integer.parseInt(hex.substring(2,4), 16), Integer.parseInt(hex.substring(4,6), 16));
     }
 
+    //Reload schemes into combobox from the array
     public void reloadSchemes(){
         schemes.getItems().clear();
         for(int i = 0; i < loadedSchemes.length; i++){
@@ -974,15 +1004,16 @@ public class BlendGUI extends Application {
         }
     }
 
+    //Initialize schemes for startup
     public void initSchemes(){
 
-        loadedSchemes[0] = new Scheme("Rainbow", 7, "c46eab9d5".split("")); //Rainbow
-        loadedSchemes[1] = new Scheme("Master", 6, "4cffff".split("")); //Master
-        loadedSchemes[2] = new Scheme("Ordered", 16, "0123456789abcdef".split("")); //Ordered
-        loadedSchemes[3] = new Scheme("Millionaire", 11, "666eeefff".split("")); //Millionaire
-        loadedSchemes[4] = new Scheme("Phoenix", 7, "4c6ef78".split("")); //Phoenix
-        loadedSchemes[5] = new Scheme("Dragon", 6, "55da22".split("")); //Dragon
-        loadedSchemes[6] = new Scheme("Bacon", 5, "c6666".split("")); //Bacon
+        loadedSchemes[0] = new Scheme("Rainbow", "c46eab9d5".split("")); //Rainbow
+        loadedSchemes[1] = new Scheme("Master", "4cffff".split("")); //Master
+        loadedSchemes[2] = new Scheme("Ordered", "0123456789abcdef".split("")); //Ordered
+        loadedSchemes[3] = new Scheme("Millionaire", "666eeefff".split("")); //Millionaire
+        loadedSchemes[4] = new Scheme("Phoenix", "4c6ef78".split("")); //Phoenix
+        loadedSchemes[5] = new Scheme("Dragon", "55da22".split("")); //Dragon
+        loadedSchemes[6] = new Scheme("Bacon", "c6666".split("")); //Bacon
         // loadedSchemes[7] and loadedSchemes[8] are reserved!
         //DO NOT ADD SCHEMES TO POS 7 OR 8 THIS WILL GO HORRIBLY WRONG 
 
@@ -993,6 +1024,7 @@ public class BlendGUI extends Application {
         generateNewRandomHexScheme();
     }
 
+    //Allows for new generation mid program
     private void generateNewRandomScheme(){
 
         Random randomSeed = new Random();
@@ -1005,7 +1037,7 @@ public class BlendGUI extends Application {
 
         //Create the scheme
         if(loadedSchemes[7] == null){
-            loadedSchemes[7] = new Scheme("Random", 32, randomArray);
+            loadedSchemes[7] = new Scheme("Random", randomArray);
         }
         else{
             loadedSchemes[7].setScheme(randomArray);
@@ -1013,6 +1045,7 @@ public class BlendGUI extends Application {
         
     }
 
+    //Allows for new generation mid program
     private void generateNewRandomHexScheme(){
         
         String[] randomHexArray = new String[32];
@@ -1022,13 +1055,14 @@ public class BlendGUI extends Application {
 
         //Create the scheme
         if(loadedSchemes[8] == null){
-            loadedSchemes[8] = new Scheme("Random Hex", 32, randomHexArray);
+            loadedSchemes[8] = new Scheme("Random Hex", randomHexArray);
         }
         else{
             loadedSchemes[8].setScheme(randomHexArray);
         }
     }
 
+    //Generates a random hex string RR:GG:BB
     public String generateRandomHex(){
 
         Random randomSeed = new Random();
@@ -1040,6 +1074,7 @@ public class BlendGUI extends Application {
         return rndHex.toString();
     }
 
+    //Bool swapping between light & dark
     public void changeTheme(MenuItem programTheme, Scene mainScene, Label[] labelColorPreviews){
         if(currentTheme.equals("LIGHT")){
             goDark(mainScene, programTheme, labelColorPreviews);
@@ -1051,6 +1086,7 @@ public class BlendGUI extends Application {
         currentTheme = "LIGHT";
     }
 
+    //Dark mode
     public void goDark(Scene mainScene, MenuItem programTheme, Label[] labelColorPreviews){
 
         mainScene.getStylesheets().add(getClass().getResource("dark.css").toString());
@@ -1072,6 +1108,7 @@ public class BlendGUI extends Application {
         copyButtonColorscheme.setGraphic(copyIconWhite2);
     }
 
+    //Light mode
     public void goLight(Scene mainScene, MenuItem programTheme, Label[] labelColorPreviews){
 
         mainScene.getStylesheets().remove(getClass().getResource("dark.css").toString());
@@ -1096,6 +1133,7 @@ public class BlendGUI extends Application {
         copyButtonColorscheme.setGraphic(copyIconBlack2);
     }
 
+    //Boolean is the hex valid; ie, does it contain any invalid chars, is it 6 chars, etc.
     public static boolean isHexOk(String hex){
         if(hex.length() != 6) return false;
         //Starts a counter for how many valid chars there are
