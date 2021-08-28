@@ -21,8 +21,6 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextFormatter;
 import javafx.scene.control.Tooltip;
 import javafx.scene.control.Alert.AlertType;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.Border;
@@ -64,7 +62,7 @@ public class BlendGUI extends Application {
     //======================================================
 
     //Global current version indicator
-    private static final String VERSION = "1.3.0";
+    private static final String VERSION = "1.3.1";
     //Default theme is light
     private String currentTheme = "LIGHT";
     //Stores the current nick for BHB
@@ -77,8 +75,11 @@ public class BlendGUI extends Application {
     private Logger log = Logger.getLogger(BlendGUI.class.getSimpleName());
     //Prevents threading errors in some cases
     private boolean alreadySaved = false;
+    //Passed around
+    private Scheme selectedScheme;
     //For global access, changing disabling between scenes
     private BorderPane rootPane = new BorderPane();
+    private Button[] buttons = new Button[6];
     private Button copyButtonBHB = new Button();
     private Button copyButtonColorscheme = new Button();
     private ComboBox<Scheme> schemes = new ComboBox<>();
@@ -125,13 +126,9 @@ public class BlendGUI extends Application {
     @Override
     public void start(Stage stage) throws Exception {
 
-        ImageView copyIcon =  new ImageView(new Image(getClass().getResource("copy_black.png").toExternalForm()));
-        copyIcon.setFitWidth(40);
-        copyIcon.setFitHeight(40);
-
-        copyButtonBHB = new Button("", copyIcon);
+        copyButtonBHB = new Button("", new CopyButtonIcon(true));
         copyButtonBHB.setTooltip(new Tooltip("Copy nickname to clipboard"));
-        copyButtonColorscheme = new Button("", copyIcon);
+        copyButtonColorscheme = new Button("", new CopyButtonIcon(true));
         copyButtonColorscheme.setTooltip(new Tooltip("Copy nickname to clipboard"));
 
         File oldUpdater = new File(System.getProperty("user.dir") + "/Update.sh");
@@ -178,6 +175,9 @@ public class BlendGUI extends Application {
             aboutAlert.setHeaderText("Version: " + VERSION);
             aboutAlert.showAndWait();
         });
+
+        MenuItem gitHub = new MenuItem("Visit the GitHub page");
+        gitHub.setOnAction(f -> getHostServices().showDocument("https://github.com/DavidArthurCole/bhb"));
 
         updateChecker.setOnAction(e -> {
 
@@ -251,7 +251,7 @@ public class BlendGUI extends Application {
         });
 
         menuFile.getItems().addAll(saveItem, loadItem);
-        menuHelp.getItems().addAll(about, updateChecker);
+        menuHelp.getItems().addAll(about, gitHub, updateChecker);
         menuTools.getItems().addAll(programTheme, slotMachineColors, switchStages);
 
         menuBar.getMenus().addAll(menuFile, menuTools, menuHelp);
@@ -407,8 +407,8 @@ public class BlendGUI extends Application {
 
     //Factory for code boxes in BHB
     public LimitedTextField makeCodeEnterField(Label codeColorLabel, int id){
-        LimitedTextField newField = new LimitedTextField();      
 
+        LimitedTextField newField = new LimitedTextField();      
         newField.setPrefWidth(75);
         newField.setFont(new Font("Arial", 14));
 
@@ -438,6 +438,13 @@ public class BlendGUI extends Application {
             updateTextFieldFontSize(newField);
         });
 
+        newField.setRestrict("[a-fA-F0-9]");
+
+        newField.setTextFormatter(new TextFormatter<>(change -> {
+            change.setText(change.getText().toUpperCase());
+            return change;
+        }));
+
         codeFields[id - 1] = newField;
 
         return newField;
@@ -449,21 +456,30 @@ public class BlendGUI extends Application {
         Label codeColorLabel = new CodeColorLabel();
         previewColorLabels[id - 1] = codeColorLabel;
         LimitedTextField codeField = makeCodeEnterField(codeColorLabel, id);
-        codeField.setOnInputMethodTextChanged(e -> codeField.setText(codeField.getText().toUpperCase()));
-        codeField.setRestrict("[a-fA-F0-9]");
-
-        codeField.setTextFormatter(new TextFormatter<>(change -> {
-            change.setText(change.getText().toUpperCase());
-            return change;
-        }));
 
         codeId.setOnMouseClicked(e -> codeField.setText(generateRandomHex()));
 
         codeColorLabel.setOnMouseClicked(e -> codeField.clear());
 
-        HBox newBox = new HBox(codeId, codeField, codeColorLabel);
+        Button upButton = new Button("↑");
+        upButton.setFont(new Font("Arial", 14));
+        upButton.setStyle("-fx-font-weight: bold");
+        buttons[(id - 1)] = upButton;
+        upButton.setOnAction(e -> {
+            if(id - 1 > 0 && isHexOk(codeField.getText())){
+                String currentText = codeField.getText();
+                String newText = codeFields[id - 2].getText();
+
+                codeField.setText(newText);
+                codeFields[id - 2].setText(currentText);
+            }
+        });
+
+        HBox newBox = new HBox(codeId, codeField, upButton, codeColorLabel);
         newBox.setAlignment(Pos.CENTER);
         newBox.setSpacing(6);
+        newBox.setMinWidth(200);
+        newBox.setMinHeight(30);
 
         return newBox;
     }
@@ -591,7 +607,7 @@ public class BlendGUI extends Application {
 
             previewLabelsBHB.setPrefHeight(defaultPreviewHeight);
             currentNickBHB = Blend.blendMain(validCodes, enterNicknameBHB.getText(), codeArray);
-            parseNickToLabel(currentNickBHB, previewLabelsBHB);
+            parseNickToLabel(currentNickBHB, previewLabelsBHB, selectedScheme, true);
             return;        
         }
         previewLabelsBHB.getChildren().clear();
@@ -609,7 +625,7 @@ public class BlendGUI extends Application {
         int userInputLength = enterNicknameColorscheme.getText().length();
 
         //Gets the currently selected scheme from the dropdown menu
-        Scheme selectedScheme = schemes.getValue();
+        selectedScheme = schemes.getValue();
 
         //Gets the codes that correspond to the scheme
         String[] schemeCodes = selectedScheme.getScheme();
@@ -628,7 +644,7 @@ public class BlendGUI extends Application {
         }
         currentNickColorScheme = nickBuilder.toString();
 
-        parseNickToLabelColorscheme(currentNickColorScheme, previewLabelsColorscheme, selectedScheme);
+        parseNickToLabel(currentNickColorScheme, previewLabelsColorscheme, selectedScheme, false);
 
         previewLabelsColorscheme.setPrefHeight(defaultPreviewHeight);
     }
@@ -647,30 +663,23 @@ public class BlendGUI extends Application {
 
     //Dark mode
     public void goDark(Scene mainScene, MenuItem programTheme, Label[] labelColorPreviews){
-
-        mainScene.getStylesheets().add(getClass().getResource("dark.css").toString());
+        for(Button b : buttons) b.setTextFill(Color.WHITE);
+        mainScene.getStylesheets().add(getClass().getClassLoader().getResource("dark.css").toString());
         programTheme.setText("Light Mode");
         for(int i = 0; i <= 5; i++){
             if(codeFields[i].getText().equals("")){
                 labelColorPreviews[i].setBackground(new Background(new BackgroundFill(Color.rgb(92, 100, 108), CornerRadii.EMPTY, Insets.EMPTY)));
             }
         }
-
-        ImageView copyIconWhite =  new ImageView(new Image(getClass().getResource("copy_white.png").toExternalForm()));
-        copyIconWhite.setFitWidth(40);
-        copyIconWhite.setFitHeight(40);
-        ImageView copyIconWhite2 =  new ImageView(new Image(getClass().getResource("copy_white.png").toExternalForm()));
-        copyIconWhite2.setFitWidth(40);
-        copyIconWhite2.setFitHeight(40);
         
-        copyButtonBHB.setGraphic(copyIconWhite);
-        copyButtonColorscheme.setGraphic(copyIconWhite2);
+        copyButtonBHB.setGraphic(new CopyButtonIcon(false));
+        copyButtonColorscheme.setGraphic(new CopyButtonIcon(false));
     }
 
     //Light mode
     public void goLight(Scene mainScene, MenuItem programTheme, Label[] labelColorPreviews){
-
-        mainScene.getStylesheets().remove(getClass().getResource("dark.css").toString());
+        for(Button b : buttons) b.setTextFill(Color.BLACK);
+        mainScene.getStylesheets().remove(getClass().getClassLoader().getResource("dark.css").toString());
         programTheme.setText("Dark Mode");
         for(int i = 0; i <=5; i++){
             if(codeFields[i].getText().equals("")){
@@ -681,15 +690,8 @@ public class BlendGUI extends Application {
             }
         }
 
-        ImageView copyIconBlack =  new ImageView(new Image(getClass().getResource("copy_black.png").toExternalForm()));
-        copyIconBlack.setFitWidth(40);
-        copyIconBlack.setFitHeight(40);
-        ImageView copyIconBlack2 =  new ImageView(new Image(getClass().getResource("copy_black.png").toExternalForm()));
-        copyIconBlack2.setFitWidth(40);
-        copyIconBlack2.setFitHeight(40);
-
-        copyButtonBHB.setGraphic(copyIconBlack);
-        copyButtonColorscheme.setGraphic(copyIconBlack2);
+        copyButtonBHB.setGraphic(new CopyButtonIcon(true));
+        copyButtonColorscheme.setGraphic(new CopyButtonIcon(true));
     }
 
     //======================================================
@@ -697,63 +699,35 @@ public class BlendGUI extends Application {
     //======================================================
 
     //Create preview label coundaries based on a formatted nick
-    public static void parseNickToLabel(String nick, HBox previewLabelsBHB){
-        previewLabelsBHB.getChildren().clear();
+    public static void parseNickToLabel(String nick, HBox previewLabels, Scheme selectedScheme, boolean isBhb){
+        previewLabels.getChildren().clear();
         String[] comp = nick.split("&#");
-        for(int i = 1; i < comp.length; i++){
-            previewLabelsBHB.getChildren().add(new PreviewLabel(comp[i].charAt(6), comp[i].substring(0,6),  (comp.length - 1)));
-        }
-    }
-
-    //Colorscheme version of ^
-    public static void parseNickToLabelColorscheme(String nick, HBox previewLabelsColorscheme, Scheme selectedScheme){
-        previewLabelsColorscheme.getChildren().clear();
-        if(selectedScheme.getName().equals("Random Hex")){
-            String[] comp = nick.split("&#");
-            for(int i = 1; i < comp.length; i++) previewLabelsColorscheme.getChildren().add(new PreviewLabel(comp[i].charAt(6), comp[i].substring(0,6), (comp.length - 1)));
-        }
-        else{
-            String[] comp = nick.split("&");
-            for(int i = 1; i < comp.length; i++) previewLabelsColorscheme.getChildren().add(new PreviewLabel(comp[i].charAt(1), Character.toString(comp[i].charAt(0)), (comp.length - 1)));
-        }
+        if(isBhb || selectedScheme.getName().equals("Random Hex")) for(int i = 1; i < comp.length; i++) previewLabels.getChildren().add(new PreviewLabel(comp[i].charAt(6), comp[i].substring(0,6), (comp.length - 1)));
+        else for(int i = 1; i < nick.split("&").length; i++) previewLabels.getChildren().add(new PreviewLabel(nick.split("&")[i].charAt(1), Character.toString(nick.split("&")[i].charAt(0)), (nick.split("&").length - 1)));
     }
 
     //Allows for new generation mid program
     private void generateNewRandomScheme(){
 
-        Random randomSeed = new Random();
-        Random random = new Random(randomSeed.nextInt(Integer.MAX_VALUE));
-
+        //Create random colors
+        Random random = new Random(new Random().nextInt(Integer.MAX_VALUE));
         String[] randomArray = new String[32];
-        for(int i = 0; i < 32; ++i){
-            randomArray[i] = Character.toString("0123456789abcdef".charAt(random.nextInt(15)));
-        }
+        for(int i = 0; i < 32; ++i) randomArray[i] = Character.toString("0123456789abcdef".charAt(random.nextInt(15)));
 
         //Create the scheme
-        if(loadedSchemes[7] == null){
-            loadedSchemes[7] = new Scheme("Random", randomArray);
-        }
-        else{
-            loadedSchemes[7].setScheme(randomArray);
-        }
-        
+        if(loadedSchemes[7] == null) loadedSchemes[7] = new Scheme("Random", randomArray);
+        else loadedSchemes[7].setScheme(randomArray);
     }
 
     //Allows for new generation mid program
     private void generateNewRandomHexScheme(){
         
         String[] randomHexArray = new String[32];
-        for(int i = 0; i < 32; ++i){
-            randomHexArray[i] = generateRandomHex();
-        }
+        for(int i = 0; i < 32; ++i) randomHexArray[i] = generateRandomHex();
 
         //Create the scheme
-        if(loadedSchemes[8] == null){
-            loadedSchemes[8] = new Scheme("Random Hex", randomHexArray);
-        }
-        else{
-            loadedSchemes[8].setScheme(randomHexArray);
-        }
+        if(loadedSchemes[8] == null) loadedSchemes[8] = new Scheme("Random Hex", randomHexArray);
+        else loadedSchemes[8].setScheme(randomHexArray);
     }
 
     //======================================================
@@ -1003,9 +977,7 @@ public class BlendGUI extends Application {
         int length = Math.min(components1.length, components2.length);
         for(int i = 0; i < length; i++) {
             int result = Integer.compare(Integer.parseInt(components1[i]), Integer.parseInt(components2[i]));
-            if(result != 0) {
-                return result;
-            }
+            if(result != 0) return result;
         }
         return Integer.compare(components1.length, components2.length);
     }
@@ -1071,11 +1043,10 @@ public class BlendGUI extends Application {
     //Generates a random hex string RR:GG:BB
     public String generateRandomHex(){
 
-        Random randomSeed = new Random();
-        Random random = new Random(randomSeed.nextInt(Integer.MAX_VALUE));
+        Random random = new Random(new Random().nextInt(Integer.MAX_VALUE));
         StringBuilder rndHex = new StringBuilder();
 
-        for (int i = 0; i < 6; i++) rndHex.append("ABCDEF0123456789".charAt(random.nextInt(16)));
+        for (int i = 0; i < 6; i++) rndHex.append("0123456789ABCDEF".charAt(random.nextInt(16)));
 
         return rndHex.toString();
     }
