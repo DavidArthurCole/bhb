@@ -67,7 +67,7 @@ public class BlendGUI extends Application {
     //======================================================
 
     //Global current version indicator
-    private static final String VERSION = "1.3.1";
+    private static final String VERSION = "1.4.0";
     //Default theme is light
     private String currentTheme = "LIGHT";
     //Stores the current nick for BHB
