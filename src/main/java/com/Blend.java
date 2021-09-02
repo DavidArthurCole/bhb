@@ -23,7 +23,6 @@ public class Blend {
 
         //Loop through each step
         for(float j = 0; j <= (input.length() - 1); ++j){
-
             output.append("&#" 
             + (padWithZeros(Integer.toHexString(Integer.parseInt(hexOne.substring(0, 2),16) + 
                 (int)((j / (input.length() - 1)) * (Integer.parseInt(hexTwo.substring(0, 2),16) - Integer.parseInt(hexOne.substring(0, 2),16)))))
@@ -44,6 +43,7 @@ public class Blend {
 
         //This is easy - Blend the colors, return it
         if(howManyCodes == 2) return(blendTwo(codeArray[0], codeArray[1], input));
+
         //This is not - Figure out if it's odd or even, blend from there, recursively
         else blendHard(howManyCodes, input, codeArray, output);
 
@@ -63,9 +63,7 @@ public class Blend {
         //Goes through and concatenates blended pieces together into one output
         for (int i = 0; i <= 4; ++i) {
             if (inputSeparated[i] != null && !inputSeparated[i].equals("")) {
-                if (i == 0) {
-                    output.append(blendTwo(codeArray[i], codeArray[i + 1], inputSeparated[i]));
-                }
+                if (i == 0) output.append(blendTwo(codeArray[i], codeArray[i + 1], inputSeparated[i]));
                 else {
                     String temp = blendTwo(codeArray[i], codeArray[i + 1], inputSeparated[i]);
                     output.append(temp.substring(9, temp.length()));
@@ -115,40 +113,24 @@ public class Blend {
     public static void blendOdd(int midpoints, int start, int end, String[] inputSeparated, String input){
 
         if(midpoints == 1){
-            if (input.length() % 2 == 1) {
-                midpoint1 = end / 2;
-            }
-            else {
-                midpoint1 = (end + 1) / 2;
-            }
+            if (input.length() % 2 == 1) midpoint1 = end / 2;
+            else midpoint1 = (end + 1) / 2;
 
             inputSeparated[0] = input.substring(start, midpoint1 + 1);
             inputSeparated[1] = input.substring(midpoint1, end + 1);
         }
         else if(midpoints == 3){
             //Calculate center midpoint (midpoint2)
-            if (input.length() % 2 == 1) {
-                midpoint2 = end / 2;
-            }
-            else {
-                midpoint2 = (end + 1) / 2;
-            }
+            if (input.length() % 2 == 1) midpoint2 = end / 2;
+            else midpoint2 = (end + 1) / 2;
 
             //Calculate midpoint1
-            if (midpoint2 % 2 == 0) {
-                midpoint1 = (midpoint2 / 2);
-            }
-            else {
-                midpoint1 = ((midpoint2 + 1) / 2);
-            }
+            if (midpoint2 % 2 == 0) midpoint1 = (midpoint2 / 2);
+            else midpoint1 = ((midpoint2 + 1) / 2);
 
             //Calculate midpoint3
-            if ((end - midpoint2) % 2 == 1) {
-                midpoint3 = (end - (midpoint2 / 2));
-            }
-            else {
-                midpoint3 = (end - ((midpoint2 + 1) / 2));
-            }
+            if ((end - midpoint2) % 2 == 1) midpoint3 = (end - (midpoint2 / 2));
+            else midpoint3 = (end - ((midpoint2 + 1) / 2));
 
             inputSeparated[0] = input.substring(start, midpoint1 + 1);
             inputSeparated[1] = input.substring(midpoint1, midpoint2 + 1);

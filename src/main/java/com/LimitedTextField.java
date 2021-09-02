@@ -41,24 +41,6 @@ public class LimitedTextField extends TextField {
     }
 
     /**
-     * The max length property.
-     *
-     * @return The max length property.
-     */
-    public IntegerProperty maxLengthProperty() {
-        return maxLength;
-    }
-
-    /**
-     * Gets the max length of the text field.
-     *
-     * @return The max length.
-     */
-    public int getMaxLength() {
-        return maxLength.get();
-    }
-
-    /**
      * Sets the max length of the text field.
      *
      * @param maxLength
@@ -66,26 +48,6 @@ public class LimitedTextField extends TextField {
      */
     public void setMaxLength(int maxLength) {
         this.maxLength.set(maxLength);
-    }
-
-    /**
-     * The restrict property.
-     *
-     * @return The restrict property.
-     */
-    public StringProperty restrictProperty() {
-        return restrict;
-    }
-
-    /**
-     * Gets a regular expression character class which restricts the user input.
-     *
-     *
-     * @return The regular expression.
-     * @see #getRestrict()
-     */
-    public String getRestrict() {
-        return restrict.get();
     }
 
     /**

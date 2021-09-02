@@ -10,10 +10,6 @@ public class Scheme {
         this.schemeChars = schemeChars;
     }
 
-    public String getName(){
-        return this.name;
-    }
-
     public String[] getScheme(){
         return this.schemeChars;
     }
