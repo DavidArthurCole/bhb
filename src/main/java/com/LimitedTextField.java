@@ -7,13 +7,21 @@ import javafx.beans.property.StringProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextFormatter;
 
 
 public class LimitedTextField extends TextField {
     private IntegerProperty maxLength = new SimpleIntegerProperty(this, "maxLength", -1);
     private StringProperty restrict = new SimpleStringProperty(this, "restrict");
 
-    public LimitedTextField() {
+    public LimitedTextField(boolean upperCaseOnly) {
+        if(upperCaseOnly){
+            this.setTextFormatter(new TextFormatter<>(change -> {
+                change.setText(change.getText().toUpperCase());
+                return change;
+            }));
+        }
+
         textProperty().addListener(new ChangeListener<String>() {
             private boolean ignore;
 
@@ -38,6 +46,8 @@ public class LimitedTextField extends TextField {
                 }
             }
         });
+
+        
     }
 
     /**
