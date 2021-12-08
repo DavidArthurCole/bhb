@@ -26,13 +26,9 @@ public class LimitedTextField extends TextField {
             private boolean ignore;
 
             @Override
-            public void changed(
-                    ObservableValue<? extends String> observableValue,
-                    String s, String s1) {
+            public void changed(ObservableValue<? extends String> observableValue, String s, String s1) {
 
-                if (ignore || s1 == null){
-                    return;
-                }
+                if (ignore || s1 == null) return;
                 if (maxLength.get() > -1 && s1.length() > maxLength.get()) {
                     ignore = true;
                     setText(s1.substring(0, maxLength.get()));
@@ -46,8 +42,6 @@ public class LimitedTextField extends TextField {
                 }
             }
         });
-
-        
     }
 
     /**

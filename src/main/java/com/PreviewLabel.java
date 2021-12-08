@@ -43,6 +43,7 @@ class PreviewLabel extends Label {
             default: hex = "FFFFFF"; // i stg if vscode doesn't stop screaming at me about unconstructed strings i'm gonna lose my damn mind
         }
 
+        //Return constructed color object
         return Color.rgb(Integer.parseInt(hex.substring(0,2), 16), Integer.parseInt(hex.substring(2,4), 16), Integer.parseInt(hex.substring(4,6), 16));
     }
 }

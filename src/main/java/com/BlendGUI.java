@@ -53,6 +53,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Optional;
 import java.util.Random;
+
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.apache.commons.io.IOUtils;
@@ -74,8 +75,8 @@ public class BlendGUI extends Application {
     //Init log file
     private File logFile = new File("log.txt");
     //Global current version indicator
-    private static final String VERSION = "1.4.1";
-    //Literally just gets the latest version number from the git repo
+    private static final String VERSION = "1.4.2";
+    //Gets the latest version number from the git repo
     private final String latest = getTagFromGitJson("tag_name");
     //Default theme is light
     private String currentTheme = "LIGHT";
@@ -128,7 +129,7 @@ public class BlendGUI extends Application {
     private HBox previewLabelsBHBBox = new HBox();
     private HBox codesAndPickerBox = new HBox();
     private HBox pickerAndCopyButtonBox = new HBox();
-    private HBox nickInputBox = new HBox(new Label("Enter nickname: "), enterNicknameBHB);
+    private HBox nickInputBox = new HBox(new Label("Enter text: "), enterNicknameBHB);
 
     private Label[] previewColorLabels = new Label[6];
     
@@ -164,7 +165,7 @@ public class BlendGUI extends Application {
         if(args.length >=1 && args[0] != null) killOldLinuxProcess(args);
         //Catch flag for verbose logging mode
         if(args.length >=2 && args[1] != null && args[1].equalsIgnoreCase("-v")) verboseLogging = true;
-        launch();      
+        launch();    
     }
 
     //Start the program
@@ -183,7 +184,7 @@ public class BlendGUI extends Application {
         rootPane.setCenter(mainBHBBox);
         mainScene = new Scene(rootPane);
         stage.setScene(mainScene);
-        stage.setTitle("Blazin's Hex Blender");
+        stage.setTitle("Hex Blender");
         stage.show();
         stage.setResizable(false);
 
@@ -559,7 +560,7 @@ public class BlendGUI extends Application {
         chooseScheme.setSpacing(3);
 
         HBox enternick = new HBox();
-        Label prompt1 = new Label("Enter a nickname: ");
+        Label prompt1 = new Label("Enter text: ");
 
         enterNicknameColorscheme.setRestrict("[A-Za-z0-9_]");
         enterNicknameColorscheme.setPrefWidth(275);
