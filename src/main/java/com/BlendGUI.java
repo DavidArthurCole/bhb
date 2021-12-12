@@ -744,6 +744,8 @@ public class BlendGUI extends Application {
         undoItem.setDisable(referencedFieldsQueue.isEmpty());
     }
 
+    private Object oldCenter;
+
     //Switch between BHB and Colorscheme
     private void switchStages(Stage stage){
         if(rootPane.getCenter().equals(mainBHBBox)){
@@ -769,7 +771,8 @@ public class BlendGUI extends Application {
     }
 
     private void toggleSettings(){
-        if(rootPane.getCenter().equals(mainBHBBox)){
+        if(rootPane.getCenter().equals(mainBHBBox) || rootPane.getCenter().equals(mainColorschemeBox)){
+            oldCenter = rootPane.getCenter();
             rootPane.setCenter(settingsPane);
             //Disable items not used in scene
             saveItem.setDisable(true);
@@ -780,14 +783,21 @@ public class BlendGUI extends Application {
             settingsItem.setText("Hide Settings");
         }
         else{
-            rootPane.setCenter(mainBHBBox);
+            if(oldCenter instanceof VBox){
+                rootPane.setCenter(mainBHBBox);
+                switchStagesItem.setText("Switch to Colorscheme V2");
+            }
+            else if(oldCenter instanceof BorderPane){
+                rootPane.setCenter(mainColorschemeBox);
+                switchStagesItem.setText("Switch to BHB");
+            }
             //Re-enable used buttons in scene
             saveItem.setDisable(false);
             loadItem.setDisable(false);
             switchStagesItem.setDisable(false);
             slotMachineColorsItem.setDisable(false);
             settingsItem.setText("Settings");
-            switchStagesItem.setText("Switch to Colorscheme V2");
+            
             logStatic(Level.INFO, "Switched to BHB", null);
         }
     }

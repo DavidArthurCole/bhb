@@ -3,13 +3,10 @@ package com;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Scanner;
 
 public class Blend {
 
     private Blend(){}
-
-    protected static Scanner scanner = new Scanner(System.in);
 
     private static String padWithZeros(String inputString){
         return String.format("%1$" + 2 + "s", inputString).replace(' ', '0');
