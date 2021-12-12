@@ -1,19 +1,60 @@
 package com;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Scanner;
 
 public class Blend {
 
     private Blend(){}
 
-    private static int midpoint1;
-    private static int midpoint2;
-    private static int midpoint3;
-
     protected static Scanner scanner = new Scanner(System.in);
 
-    public static String padWithZeros(String inputString){
+    private static String padWithZeros(String inputString){
         return String.format("%1$" + 2 + "s", inputString).replace(' ', '0');
+    }
+
+    public static List<Integer> findSplitLengths(String word, int numSplits){
+
+        int len = word.length();
+
+        //Store the length each substring should be
+        List<Integer> solution = new ArrayList<>();
+
+        int roughDivision = (int) Math.ceil( (double) len/numSplits); // the length of each divided word
+        int remainingLetters = word.length();
+        
+        boolean reduced = false; // flag to see if I've already reduced the size of the sub-words
+
+        for (int i = 0; i < numSplits; ++i) {
+
+            
+            int x = (roughDivision-1)*(numSplits-(i)); // see next comment
+            // checks to see if a reduced word length * remaining splits exactly equals remaining letters
+            if (!reduced && x == remainingLetters) {
+                roughDivision -= 1;
+                reduced = true;
+            }
+
+            solution.add(roughDivision); 
+            remainingLetters -= roughDivision;
+        }
+
+        return solution;
+    }
+
+    public static String[] determineSplits(boolean rightJustified, List<Integer> splitLengths, String input){
+
+        String[] result = new String[splitLengths.size()];
+        if(rightJustified) Collections.reverse(splitLengths);
+        int index = 0;
+        for(int i = 0; i < splitLengths.size(); ++i){
+            result[i] = input.substring(index, index+splitLengths.get(i));
+            index+=splitLengths.get(i);
+        }
+
+        return result;
     }
 
     public static String blendTwo(String hexOne, String hexTwo, String input){
@@ -36,106 +77,23 @@ public class Blend {
         return output.toString();
     }
 
-    public static String blendMain(int howManyCodes, String input, String[] codeArray){
+    public static String blendMain(int howManyCodes, String input, String[] codeArray, boolean rightJustified){
+
 
         //New builder
         StringBuilder output = new StringBuilder();
+        int codeIndex = 0;
+        List<Integer> splitLengths = findSplitLengths(input, (howManyCodes - 1));
+        String[] splits = determineSplits(rightJustified, splitLengths, input);
 
-        //This is easy - Blend the colors, return it
-        if(howManyCodes == 2) return(blendTwo(codeArray[0], codeArray[1], input));
+        for(int i = 0; i < splits.length; i++ ){
+            if(i != (splits.length -1)) splits[i] = splits[i] + splits[i + 1].substring(0, 1);
 
-        //This is not - Figure out if it's odd or even, blend from there, recursively
-        else blendHard(howManyCodes, input, codeArray, output);
+            String addendum = blendTwo(codeArray[codeIndex], codeArray[codeIndex + 1], splits[i]);
+            output.append(i != (splits.length - 1) ? addendum.substring(0, addendum.length() - 9) : addendum);;
+            codeIndex++;
+        }
 
         return output.toString();
-    }
-
-    public static void blendHard(int howManyCodes, String input, String[] codeArray, StringBuilder output){
-
-        //Create a new array to hold separated pieces
-        String[] inputSeparated = new String[5];
-
-        //If the midpoint number is even
-        if((howManyCodes - 2) % 2 == 0) blendEven(howManyCodes - 2, 0, (input.length() - 1), inputSeparated, input);
-        //If midpoint number is odd
-        else blendOdd(howManyCodes - 2, 0, (input.length() - 1), inputSeparated, input);
-
-        //Goes through and concatenates blended pieces together into one output
-        for (int i = 0; i <= 4; ++i) {
-            if (inputSeparated[i] != null && !inputSeparated[i].equals("")) {
-                if (i == 0) output.append(blendTwo(codeArray[i], codeArray[i + 1], inputSeparated[i]));
-                else {
-                    String temp = blendTwo(codeArray[i], codeArray[i + 1], inputSeparated[i]);
-                    output.append(temp.substring(9, temp.length()));
-                }
-            }
-        }
-    }
-
-    public static void blendEven(int midpoints, int start, int end, String[] inputSeparated, String input){
-
-        int midpoint4;
-
-        if(midpoints == 2){
-            midpoint1 = start + 2;
-            midpoint2 = end - 2;
-
-            while(((midpoint2 - midpoint1) - midpoint1) >= 2) {
-                midpoint1 += 1;
-                midpoint2 -= 1;
-            }
-
-            inputSeparated[0] = input.substring(start, midpoint1 + 1);
-            inputSeparated[1] = input.substring(midpoint1, midpoint2 + 1);
-            inputSeparated[2] = input.substring(midpoint2, end + 1);
-        }
-        else if(midpoints == 4){
-            midpoint1 = start + 2;
-            midpoint2 = midpoint1 + 2;
-            midpoint4 = end - 2;
-            midpoint3 = midpoint4 - 2;
-
-            while(Math.abs((midpoint2 - midpoint1) - (midpoint3 - midpoint2)) >= 4){
-                midpoint1 += 1;
-                midpoint2 += 2;
-                midpoint4 -= 1;
-                midpoint3 -= 2;
-            }
-
-            inputSeparated[0] = input.substring(start, midpoint1 + 1);
-            inputSeparated[1] = input.substring(midpoint1, midpoint2 + 1);
-            inputSeparated[2] = input.substring(midpoint2, midpoint3 + 1);
-            inputSeparated[3] = input.substring(midpoint3, midpoint4 + 1);
-            inputSeparated[4] = input.substring(midpoint4, end + 1);
-        }
-    }
-
-    public static void blendOdd(int midpoints, int start, int end, String[] inputSeparated, String input){
-
-        if(midpoints == 1){
-            if (input.length() % 2 == 1) midpoint1 = end / 2;
-            else midpoint1 = (end + 1) / 2;
-
-            inputSeparated[0] = input.substring(start, midpoint1 + 1);
-            inputSeparated[1] = input.substring(midpoint1, end + 1);
-        }
-        else if(midpoints == 3){
-            //Calculate center midpoint (midpoint2)
-            if (input.length() % 2 == 1) midpoint2 = end / 2;
-            else midpoint2 = (end + 1) / 2;
-
-            //Calculate midpoint1
-            if (midpoint2 % 2 == 0) midpoint1 = (midpoint2 / 2);
-            else midpoint1 = ((midpoint2 + 1) / 2);
-
-            //Calculate midpoint3
-            if ((end - midpoint2) % 2 == 1) midpoint3 = (end - (midpoint2 / 2));
-            else midpoint3 = (end - ((midpoint2 + 1) / 2));
-
-            inputSeparated[0] = input.substring(start, midpoint1 + 1);
-            inputSeparated[1] = input.substring(midpoint1, midpoint2 + 1);
-            inputSeparated[2] = input.substring(midpoint2, midpoint3 + 1);
-            inputSeparated[3] = input.substring(midpoint3, end + 1);
-        }
     }
 }

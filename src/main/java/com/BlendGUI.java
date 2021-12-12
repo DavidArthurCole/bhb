@@ -14,12 +14,16 @@ import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ColorPicker;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.RadioButton;
 import javafx.scene.control.Tooltip;
 import javafx.scene.control.Alert.AlertType;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
@@ -75,7 +79,7 @@ public class BlendGUI extends Application {
     //Init log file
     private File logFile = new File("log.txt");
     //Global current version indicator
-    private static final String VERSION = "1.4.2";
+    private static final String VERSION = "1.4.3";
     //Gets the latest version number from the git repo
     private final String latest = getTagFromGitJson("tag_name");
     //Default theme is light
@@ -117,6 +121,7 @@ public class BlendGUI extends Application {
     private Scheme[] loadedSchemes = new Scheme[9];
 
     //BHB
+    private VBox mainBHBBox = new VBox();   
     private Button[] upButtons = new Button[6];
     private Button copyButtonBHB = new Button();
     private Button clearAllCodes = new Button("Clear All");
@@ -136,7 +141,7 @@ public class BlendGUI extends Application {
     // Each individual menu item for the submenus - any var ending in ..item is a MenuItem, these are all theoretically global,
     // however not all are used in both modes
     private MenuItem slotMachineColorsItem = new MenuItem("Slot Machine (Seizure Warning)");
-    private MenuItem programThemeItem = new MenuItem("Dark Mode");
+    private MenuItem settingsItem = new MenuItem("Settings");
     private MenuItem updateCheckerItem = new MenuItem("Check For Updates");
     private MenuItem aboutItem = new MenuItem("About");
     private MenuItem gitHubItem = new MenuItem("Visit the GitHub page");
@@ -146,14 +151,24 @@ public class BlendGUI extends Application {
     private Menu menuTools = new Menu("Tools");
     private Menu menuHelp = new Menu("Help");
     private Menu menuFile = new Menu("File");
-    
-    private VBox mainBHBBox = new VBox();    
+     
     private VBox codesBox = new VBox(makeCodeBox(1), makeCodeBox(2), makeCodeBox(3), makeCodeBox(4), makeCodeBox(5), makeCodeBox(6), clearAllCodes);
     private VBox colorPickerBox = new VBox();
 
     private Circle colorCircle = new Circle();
     private ColorPicker colorPickerUI = new ColorPicker(Color.BLACK);
     private BorderPane previewCopyPane = new BorderPane();
+
+    //Settings
+    private BorderPane settingsPane = new BorderPane();
+    private Setting justificationPriority = new Setting("Justification Priority", "When a string cannot evenly be split, there will need to be longer strings on one side. This setting changes which side gets longer strings.", 
+    "Left", new String[]{"Left", "Right"});
+    private Setting darkMode = new Setting("Dark Mode", "Enable dark mode for the GUI.", "Off", new String[]{"Off", "On"}){
+        @Override
+        public void execute(){
+            changeTheme(mainScene, previewColorLabels);
+        }
+    };
     
     //======================================================
     //|                 MAIN METHODS                       |
@@ -188,7 +203,11 @@ public class BlendGUI extends Application {
         stage.show();
         stage.setResizable(false);
 
-        forceLoad(mainScene, programThemeItem, previewColorLabels);
+        forceLoad(mainScene, previewColorLabels);
+
+        //Build the settings page
+        buildSettingsBox();
+
         updateUndoButton();
     }
 
@@ -234,6 +253,120 @@ public class BlendGUI extends Application {
         logStatic(Level.INFO, "BHB init completed", null);
     }
 
+    private void buildSettingsBox(){
+        settingsPane.getChildren().clear();
+
+        ImageView settingsIcon = new ImageView(new Image(getClass().getClassLoader().getResource("exit.png").toString()));
+        settingsIcon.setFitWidth(40);
+        settingsIcon.setFitHeight(40);
+
+        Button exitButton = new Button();
+        exitButton.setMinWidth(mainScene.getWidth());
+        exitButton.setTooltip(new Tooltip("Exit the settings menu"));
+        exitButton.setGraphic(settingsIcon);
+        exitButton.setOnAction(e -> toggleSettings());
+
+        HBox justificationBox = buildSetting(justificationPriority);
+        HBox darkModeBox = buildSetting(darkMode);
+        VBox settingsBox = new VBox(justificationBox, darkModeBox);
+
+
+        settingsPane.setTop(settingsBox);
+        settingsPane.setBottom(exitButton);
+        BorderPane.setAlignment(exitButton, Pos.CENTER);
+    }
+
+    public class Setting{
+
+        private String name;
+        private String description;
+        private String value;
+        private String[] options;
+
+        public Setting(String name, String description, String value, String[] options){
+            this.name = name;
+            this.description = description;
+            this.value = value;
+            this.options = options;
+        }
+
+        public String getName(){
+            return name;
+        }
+
+        public String getDescription(){
+            return description;
+        }
+
+        public String getValue(){
+            return value;
+        }
+
+        public String[] getOptions(){
+            return options;
+        }
+
+        public void setValue(String value){
+            this.value = value;
+        }
+
+        public void execute(){
+            //Do nothing by default. Override in subclasses.
+        }
+
+    }
+
+    private HBox buildSetting(Setting setting){
+
+        HBox masterBox = new HBox();
+        masterBox.setMinHeight(45);
+        masterBox.setAlignment(Pos.CENTER);
+        masterBox.setBorder(new Border(new BorderStroke(Color.BLACK, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.THIN)));
+        ImageView helpIcon = new ImageView(new Image(getClass().getClassLoader().getResource("help.png").toString()));
+        helpIcon.setFitWidth(30);
+        helpIcon.setFitHeight(30);
+        
+        Label helpLabel = new Label();
+        helpLabel.setAlignment(Pos.BASELINE_RIGHT);
+        helpLabel.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+        helpLabel.setGraphic(helpIcon);
+        helpLabel.setTooltip(new Tooltip(setting.getDescription()));
+
+        HBox newBox = new HBox();
+        newBox.setAlignment(Pos.CENTER);
+        newBox.setSpacing(6);
+        newBox.setMinWidth(250);
+        newBox.setMinHeight(30);
+
+        Label settingName = new Label(setting.getName() + ":");
+        RadioButton rb1 = new RadioButton(setting.getOptions()[0]);
+        RadioButton rb2 = new RadioButton(setting.getOptions()[1]);  
+
+        rb1.setOnAction(e -> {
+            if(rb1.isSelected()) {
+                rb2.setSelected(false);
+                setting.setValue(rb1.getText());
+            }
+            setting.execute();
+        });
+
+        rb2.setOnAction(e -> {
+            if(rb2.isSelected()){
+                rb1.setSelected(false);
+                setting.setValue(rb2.getText());
+            }
+            setting.execute();
+        });
+
+        if(setting.getValue().equals(setting.getOptions()[0])) rb1.setSelected(true);
+        else rb2.setSelected(true);
+
+        newBox.getChildren().addAll(settingName, rb1, rb2);
+        masterBox.getChildren().addAll(newBox, helpLabel);
+        
+        return masterBox;
+    }
+
     /**
      * Called by {@link #buildBHB(Stage) buildBHB}.
      * 
@@ -259,6 +392,8 @@ public class BlendGUI extends Application {
         undoItem.setOnAction(e -> undoChange());
 
         switchStagesItem.setOnAction(e -> switchStages(stage));
+
+        settingsItem.setOnAction(e -> toggleSettings());
 
         slotMachineColorsItem.setOnAction(e -> new SlotMachineColors(codeFields).start());  
 
@@ -288,8 +423,6 @@ public class BlendGUI extends Application {
             }
 
         });
-
-        programThemeItem.setOnAction(e-> changeTheme(programThemeItem, mainScene, previewColorLabels));
     }
 
     /**
@@ -302,7 +435,7 @@ public class BlendGUI extends Application {
         menuFile.getItems().addAll(saveItem, loadItem);
         menuEdit.getItems().addAll(undoItem);
         menuHelp.getItems().addAll(aboutItem, gitHubItem, updateCheckerItem);
-        menuTools.getItems().addAll(programThemeItem, slotMachineColorsItem, switchStagesItem);
+        menuTools.getItems().addAll(slotMachineColorsItem, switchStagesItem, settingsItem);
 
         menuBar.getMenus().addAll(menuFile, menuEdit, menuTools, menuHelp);
         menuBar.setBorder(new Border(new BorderStroke(Color.BLACK, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.THIN)));
@@ -624,13 +757,36 @@ public class BlendGUI extends Application {
             logStatic(Level.INFO, "Switched to ColorScheme V2", null);
         }
         else{
-
             rootPane.setCenter(mainBHBBox);
             stage.setTitle("Blazin's Hex Blender");
             //Re-enable used buttons in scene
             saveItem.setDisable(false);
             loadItem.setDisable(false);
             slotMachineColorsItem.setDisable(false);
+            switchStagesItem.setText("Switch to Colorscheme V2");
+            logStatic(Level.INFO, "Switched to BHB", null);
+        }
+    }
+
+    private void toggleSettings(){
+        if(rootPane.getCenter().equals(mainBHBBox)){
+            rootPane.setCenter(settingsPane);
+            //Disable items not used in scene
+            saveItem.setDisable(true);
+            loadItem.setDisable(true);
+            switchStagesItem.setDisable(true);
+            slotMachineColorsItem.setDisable(true);
+            logStatic(Level.INFO, "Switched to settings", null);
+            settingsItem.setText("Hide Settings");
+        }
+        else{
+            rootPane.setCenter(mainBHBBox);
+            //Re-enable used buttons in scene
+            saveItem.setDisable(false);
+            loadItem.setDisable(false);
+            switchStagesItem.setDisable(false);
+            slotMachineColorsItem.setDisable(false);
+            settingsItem.setText("Settings");
             switchStagesItem.setText("Switch to Colorscheme V2");
             logStatic(Level.INFO, "Switched to BHB", null);
         }
@@ -666,7 +822,7 @@ public class BlendGUI extends Application {
             for(int i = 0; i < validCodes; i++) codeArray[i] = codeFields[i].getText();
 
             previewLabelsBHBBox.setPrefHeight(defaultPreviewHeight);
-            currentNickBHB = Blend.blendMain(validCodes, enterNicknameBHB.getText(), codeArray);
+            currentNickBHB = Blend.blendMain(validCodes, enterNicknameBHB.getText(), codeArray, justificationPriority.getValue().equals("Right"));
             parseNickToLabel(currentNickBHB, previewLabelsBHBBox, selectedScheme, true);
             return;        
         }
@@ -710,16 +866,15 @@ public class BlendGUI extends Application {
     }
 
     //Bool swapping between light & dark
-    private void changeTheme(MenuItem programTheme, Scene mainScene, Label[] labelColorPreviews){
-        if(currentTheme.equals("LIGHT")) goDark(mainScene, programTheme, labelColorPreviews);
-        else goLight(mainScene, programTheme, labelColorPreviews);
+    private void changeTheme(Scene mainScene, Label[] labelColorPreviews){
+        if(currentTheme.equals("LIGHT")) goDark(mainScene,labelColorPreviews);
+        else goLight(mainScene, labelColorPreviews);
     }
 
     //Dark mode
-    private void goDark(Scene mainScene, MenuItem programTheme, Label[] labelColorPreviews){
+    private void goDark(Scene mainScene, Label[] labelColorPreviews){
         for(Button b : upButtons) b.setTextFill(Color.WHITE);
         mainScene.getStylesheets().add(getClass().getClassLoader().getResource("dark.css").toString());
-        programTheme.setText("Light Mode");
         for(int i = 0; i <= 5; ++i){
             if(codeFields[i].getText().equals("")){
                 labelColorPreviews[i].setBackground(new Background(new BackgroundFill(Color.rgb(92, 100, 108), CornerRadii.EMPTY, Insets.EMPTY)));
@@ -731,10 +886,9 @@ public class BlendGUI extends Application {
     }
 
     //Light mode
-    private void goLight(Scene mainScene, MenuItem programTheme, Label[] labelColorPreviews){
+    private void goLight(Scene mainScene, Label[] labelColorPreviews){
         for(Button b : upButtons) b.setTextFill(Color.BLACK);
         mainScene.getStylesheets().remove(getClass().getClassLoader().getResource("dark.css").toString());
-        programTheme.setText("Dark Mode");
         for(int i = 0; i <=5; i++){
             if(codeFields[i].getText().equals("")){
                 labelColorPreviews[i].setBackground(new Background(new BackgroundFill(Color.rgb(
@@ -1021,7 +1175,7 @@ public class BlendGUI extends Application {
     }
 
     //Intrusive loading technique, will disrupt the program's functionality temporarily
-    private void forceLoad(Scene mainScene, MenuItem programTheme, Label[] labelColorPreviews){
+    private void forceLoad(Scene mainScene, Label[] labelColorPreviews){
 
         //Create a temporary reference to the file
         File tempStore = new File(System.getProperty("user.dir") + "/tempstore.txt");
@@ -1050,7 +1204,13 @@ public class BlendGUI extends Application {
 
             //Set theme based on config
             String savedTheme = bReader.readLine();
-            if(savedTheme.equals("DARK")) changeTheme(programTheme, mainScene, labelColorPreviews);   
+            if(savedTheme.equals("DARK")) {
+                changeTheme( mainScene, labelColorPreviews);
+                darkMode.setValue("On");
+            }
+
+            String savedJustification = bReader.readLine();
+            if(savedJustification != null) justificationPriority.setValue(savedJustification);
         }
         catch(IOException | StringIndexOutOfBoundsException e)
         {
@@ -1124,7 +1284,8 @@ public class BlendGUI extends Application {
                 //Write the 6 code from boxes (including empty lines)
                 for(int i = 0; i < 6; i++) bWriter.write(codes[i] + "\n");
                 bWriter.write(enterNicknameBHB.getText() + "\n");
-                bWriter.write(currentTheme);
+                bWriter.write(currentTheme + "\n");
+                bWriter.write(justificationPriority.getValue());
                 Runtime.getRuntime().exec("attrib +H \"" +  System.getProperty("user.dir") + "/tempstore.txt\"" );
             }
             catch(IOException | StringIndexOutOfBoundsException e)
