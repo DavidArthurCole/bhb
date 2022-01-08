@@ -79,7 +79,7 @@ public class BlendGUI extends Application {
     //Init log file
     private File logFile = new File("log.txt");
     //Global current version indicator
-    private static final String VERSION = "1.4.3";
+    private static final String VERSION = "1.5.0";
     //Gets the latest version number from the git repo
     private final String latest = getTagFromGitJson("tag_name");
     //Default theme is light
@@ -229,7 +229,7 @@ public class BlendGUI extends Application {
         //Log file handler, deleting if empty
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try{
-                //Sleep for 50 ms to account for file lock
+                //Sleep for 250 ms to account for file lock
                 Thread.sleep(250);
             }
             catch(InterruptedException ex){
@@ -993,9 +993,7 @@ public class BlendGUI extends Application {
             if(osName.length() >= 7 &&  osName.substring(0, 7).equals("Windows")) updateSelfWindows();
             else if(osName.substring(0,5).equals("Linux")) updateSelfLinux();
             else{
-                Alert unsupported = new Alert(AlertType.ERROR, "Upgrading not supported on this OS yet.");
-                unsupported.setHeaderText(osName);
-                unsupported.showAndWait();
+                updateSelfMacOS();
             }       
         }
     }
@@ -1028,6 +1026,18 @@ public class BlendGUI extends Application {
         executeCommandLinux("#!/bin/bash\n\ncd " + System.getProperty("user.dir") + "\nwget https://github.com/DavidArthurCole/bhb/releases/download/" + latest + "/BHB.jar -O BHB.jar && java -jar BHB.jar " + Long.toString(getPID()));
         new Thread(this::forceSave).start();
         alreadySaved = true;
+        System.exit(0);
+    }
+
+    private void updateSelfMacOS(){
+        Thread saveThread = new Thread(this::forceSave);
+        saveThread.start();
+        try { saveThread.join();}
+        catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            logStatic(Level.SEVERE, "Exception in updateSelfMacOS(); Stacktrace: " + ex.getStackTrace(), ex);
+        }
+        executeCommandMacOS("cd " + System.getProperty("user.dir") + " && curl -H \"Accept: application/zip\" -L -o BHB.jar 'https://github.com/DavidArthurCole/bhb/releases/download/" + latest + "/BHB.jar' && java -jar BHB.jar " + Long.toString(getPID()));
         System.exit(0);
     }
 
@@ -1128,6 +1138,19 @@ public class BlendGUI extends Application {
         catch(InterruptedException ex){
             logStatic(Level.SEVERE, "Exception in executeCommandLinux(); Stacktrace: " + ex.getStackTrace(), ex);
             Thread.currentThread().interrupt();
+        }
+    }
+
+    private void executeCommandMacOS(String command){
+        try {
+            Runtime.getRuntime().exec(
+                new String[]{"/bin/zsh", "-c", command}
+            ).waitFor();
+        } catch (IOException e) {
+            logStatic(Level.SEVERE, e.getMessage(), e);
+        } catch (InterruptedException e){
+            Thread.currentThread().interrupt();
+            logStatic(Level.SEVERE, e.getMessage(), e);
         }
     }
 
@@ -1296,7 +1319,12 @@ public class BlendGUI extends Application {
                 bWriter.write(enterNicknameBHB.getText() + "\n");
                 bWriter.write(currentTheme + "\n");
                 bWriter.write(justificationPriority.getValue());
-                Runtime.getRuntime().exec("attrib +H \"" +  System.getProperty("user.dir") + "/tempstore.txt\"" );
+
+                //Hides the file from the user - only works on Windows
+                String osName = System.getProperty("os.name");
+                if(osName.contains("Windows")){
+                    Runtime.getRuntime().exec("attrib +H \"" +  System.getProperty("user.dir") + "/tempstore.txt\"" );
+                }
             }
             catch(IOException | StringIndexOutOfBoundsException e)
             {
