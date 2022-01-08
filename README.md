@@ -11,4 +11,8 @@ Running on Linux distros:
 - Run BHB with `java -jar BHB.jar`
 
 Running on MacOSX:
-- Not currently supported
+- Download and install the [Java 8 JDK](https://download.oracle.com/otn-pub/java/jdk/8u311-b11/4d5417147a92418ea8b615e228bb6935/jdk-8u311-macosx-x64.dmg)
+- Download `BHB.jar` (Optional: Move the file to a location other than Downloads)
+- Open Terminal
+- `cd` to the location of the jar file. If you did not move the file, the command will likely be: `cd Downloads`. Otherwise, if you, for example, moved the file to your desktop, the command would be: `cd Desktop`
+- Run BHB with `java -jar BHB.jar`
