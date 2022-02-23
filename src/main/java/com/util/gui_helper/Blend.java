@@ -1,4 +1,4 @@
-package com;
+package com.util.gui_helper;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -26,7 +26,6 @@ public class Blend {
 
         for (int i = 0; i < numSplits; ++i) {
 
-            
             int x = (roughDivision-1)*(numSplits-(i)); // see next comment
             // checks to see if a reduced word length * remaining splits exactly equals remaining letters
             if (!reduced && x == remainingLetters) {
@@ -76,19 +75,16 @@ public class Blend {
 
     public static String blendMain(int howManyCodes, String input, String[] codeArray, boolean rightJustified){
 
-
         //New builder
         StringBuilder output = new StringBuilder();
-        int codeIndex = 0;
         List<Integer> splitLengths = findSplitLengths(input, (howManyCodes - 1));
         String[] splits = determineSplits(rightJustified, splitLengths, input);
 
-        for(int i = 0; i < splits.length; i++ ){
+        for(int i = 0, codeIndex = 0; i < splits.length; i++, codeIndex++){
             if(i != (splits.length -1)) splits[i] = splits[i] + splits[i + 1].substring(0, 1);
 
             String addendum = blendTwo(codeArray[codeIndex], codeArray[codeIndex + 1], splits[i]);
-            output.append(i != (splits.length - 1) ? addendum.substring(0, addendum.length() - 9) : addendum);;
-            codeIndex++;
+            output.append(i != (splits.length - 1) ? addendum.substring(0, addendum.length() - 9) : addendum);
         }
 
         return output.toString();

@@ -60,6 +60,17 @@ import java.util.Random;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.gui.CodeColorLabel;
+import com.gui.CopyButtonIcon;
+import com.gui.LimitedTextField;
+import com.gui.PreviewLabel;
+import com.util.gui_helper.Blend;
+import com.util.gui_helper.RandomHexGenerator;
+import com.util.gui_helper.Scheme;
+import com.util.gui_helper.Setting;
+import com.util.gui_helper.SlotMachineColors;
+import com.util.updater.Updater;
+
 import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
 import java.util.logging.*;
@@ -79,9 +90,11 @@ public class BlendGUI extends Application {
     //Init log file
     private File logFile = new File("log.txt");
     //Global current version indicator
-    private static final String VERSION = "1.5.0";
+    private static final String VERSION = "1.5.1";
     //Gets the latest version number from the git repo
     private final String latest = getTagFromGitJson("tag_name");
+    //Global updater object
+    private Updater updater; 
     //Default theme is light
     private String currentTheme = "LIGHT";
     //Stores the current nick for BHB
@@ -117,7 +130,7 @@ public class BlendGUI extends Application {
     private Button copyButtonColorscheme = new Button();
     private HBox previewLabelsColorscheme = new HBox();
     private ComboBox<Scheme> schemes = new ComboBox<>();
-    private LimitedTextField enterNicknameColorscheme = new LimitedTextField(false);
+    private LimitedTextField enterNicknameColorscheme = new LimitedTextField(false, "[A-Za-z0-9_]", -1);
     private Scheme[] loadedSchemes = new Scheme[9];
 
     //BHB
@@ -129,7 +142,7 @@ public class BlendGUI extends Application {
 
     private LimitedTextField lastEnteredField;
     private LimitedTextField[] codeFields = new LimitedTextField[6];
-    private LimitedTextField enterNicknameBHB = new LimitedTextField(false);
+    private LimitedTextField enterNicknameBHB = new LimitedTextField(false, "[A-Za-z0-9_]", -1);
 
     private HBox previewLabelsBHBBox = new HBox();
     private HBox codesAndPickerBox = new HBox();
@@ -162,13 +175,19 @@ public class BlendGUI extends Application {
     //Settings
     private BorderPane settingsPane = new BorderPane();
     private Setting justificationPriority = new Setting("Justification Priority", "When a string cannot evenly be split, there will need to be longer strings on one side. This setting changes which side gets longer strings.", 
-    "Left", new String[]{"Left", "Right"});
+    "Left", new String[]{"Left", "Right"}){
+        @Override
+        public void execute(){
+            renderOnHook = true;
+        }   
+    };
     private Setting darkMode = new Setting("Dark Mode", "Enable dark mode for the GUI.", "Off", new String[]{"Off", "On"}){
         @Override
         public void execute(){
             changeTheme(mainScene, previewColorLabels);
         }
     };
+    private boolean renderOnHook = false;
     
     //======================================================
     //|                 MAIN METHODS                       |
@@ -209,6 +228,8 @@ public class BlendGUI extends Application {
         buildSettingsBox();
 
         updateUndoButton();
+
+        updater = new Updater(latest);
     }
 
     //======================================================
@@ -274,46 +295,6 @@ public class BlendGUI extends Application {
         settingsPane.setTop(settingsBox);
         settingsPane.setBottom(exitButton);
         BorderPane.setAlignment(exitButton, Pos.CENTER);
-    }
-
-    public class Setting{
-
-        private String name;
-        private String description;
-        private String value;
-        private String[] options;
-
-        public Setting(String name, String description, String value, String[] options){
-            this.name = name;
-            this.description = description;
-            this.value = value;
-            this.options = options;
-        }
-
-        public String getName(){
-            return name;
-        }
-
-        public String getDescription(){
-            return description;
-        }
-
-        public String getValue(){
-            return value;
-        }
-
-        public String[] getOptions(){
-            return options;
-        }
-
-        public void setValue(String value){
-            this.value = value;
-        }
-
-        public void execute(){
-            //Do nothing by default. Override in subclasses.
-        }
-
     }
 
     private HBox buildSetting(Setting setting){
@@ -571,9 +552,9 @@ public class BlendGUI extends Application {
      * @see Circle
      */
     private void buildMiscBHB(){
-        enterNicknameBHB.setRestrict("[A-Za-z0-9_]");
+
         enterNicknameBHB.setPrefWidth(275);
-        enterNicknameBHB.textProperty().addListener((observable, oldValue, newValue) -> updatePreview());
+        enterNicknameBHB.textProperty().addListener((observable, oldValue, newValue) -> updatePreviewBHB());
         
         colorCircle.setRadius(75);
         colorCircle.setFill(colorPickerUI.getValue());
@@ -588,14 +569,14 @@ public class BlendGUI extends Application {
     //Factory for code boxes in BHB
     private LimitedTextField makeCodeEnterField(Label codeColorLabel, int id){
 
-        LimitedTextField newField = new LimitedTextField(true);      
-        newField.setPrefWidth(75);
-        newField.setFont(new Font("Arial", 14));
+        LimitedTextField colorCodeEnterField = new LimitedTextField(true, "[a-fA-F0-9]", 6);      
+        colorCodeEnterField.setPrefWidth(75);
+        colorCodeEnterField.setFont(new Font("Arial", 14));
 
-        newField.setMaxLength(6);
-        newField.pressedProperty().addListener(listener -> lastEnteredField = newField);
-        newField.focusedProperty().addListener(listener -> lastEnteredField = newField);
-        newField.textProperty().addListener((observable, oldValue, newValue) -> {
+        colorCodeEnterField.pressedProperty().addListener(listener -> lastEnteredField = colorCodeEnterField);
+        colorCodeEnterField.focusedProperty().addListener(listener -> lastEnteredField = colorCodeEnterField);
+        colorCodeEnterField.setOnKeyPressed(e -> {if(ctrlZ.match(e)) undoChange();});
+        colorCodeEnterField.textProperty().addListener((observable, oldValue, newValue) -> {
 
             if(isHexOk(newValue)){
                 codeColorLabel.setBackground(new Background(new BackgroundFill(Color.rgb(
@@ -614,16 +595,13 @@ public class BlendGUI extends Application {
                 
             }
             unlockFields();
-            updatePreview();
-            updateTextFieldFontSize(newField);
+            updatePreviewBHB();
+            updateTextFieldFontSize(colorCodeEnterField);
         });
 
-        newField.setOnKeyPressed(e -> {if(ctrlZ.match(e)) undoChange();});
-        newField.setRestrict("[a-fA-F0-9]");
-
-        codeFields[id - 1] = newField;
+        codeFields[id - 1] = colorCodeEnterField;
         logStatic(Level.INFO, "Created enterCodeField with id: " + Integer.toString(id), null);
-        return newField;
+        return colorCodeEnterField;
     }
 
     //Factory for code box containers in BHB
@@ -695,7 +673,6 @@ public class BlendGUI extends Application {
         HBox enternick = new HBox();
         Label prompt1 = new Label("Enter text: ");
 
-        enterNicknameColorscheme.setRestrict("[A-Za-z0-9_]");
         enterNicknameColorscheme.setPrefWidth(275);
         enterNicknameColorscheme.textProperty().addListener((observable, oldValue, newValue) -> {
             if(schemes.getValue() != null) updatePreviewColorscheme();
@@ -784,6 +761,12 @@ public class BlendGUI extends Application {
         }
         else{
             if(oldCenter instanceof VBox){
+                //Handles rendering nickname labels after justification was changed L->R or R->L
+                if(renderOnHook){
+                    renderOnHook = false;
+                    updatePreviewBHB();
+                }
+                //Show the main box again
                 rootPane.setCenter(mainBHBBox);
                 switchStagesItem.setText("Switch to Colorscheme V2");
             }
@@ -820,7 +803,7 @@ public class BlendGUI extends Application {
     }
 
     //Update the preview with new text or new codes
-    public void updatePreview(){
+    public void updatePreviewBHB(){
 
         int userInputLength = enterNicknameBHB.getText().length();
 
@@ -990,55 +973,39 @@ public class BlendGUI extends Application {
 
         if(result.orElse(no) == yes){
             String osName = System.getProperty("os.name");
-            if(osName.length() >= 7 &&  osName.substring(0, 7).equals("Windows")) updateSelfWindows();
-            else if(osName.substring(0,5).equals("Linux")) updateSelfLinux();
-            else{
-                updateSelfMacOS();
-            }       
-        }
-    }
+            String res;
+            Thread saveThread = new Thread(this::forceSave);
+            saveThread.start();
 
-
-    private void updateSelfWindows(){
-        Thread saveThread = new Thread(this::forceSave);
-        saveThread.start();
-        try { saveThread.join();}
-        catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            logStatic(Level.SEVERE, "Exception in updateSelfWindows(); Stacktrace: " + ex.getStackTrace(), ex);
+            if(osName.length() >= 7 &&  osName.substring(0, 7).equals("Windows")){
+                try { saveThread.join();}
+                catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    logStatic(Level.SEVERE, "Exception in updateSelfWindows(); Stacktrace: " + ex.getStackTrace(), ex);
+                }
+                alreadySaved = true;
+                res = updater.windowsUpdater();
+            }
+            else if(osName.substring(0,5).equals("Linux")){
+                try { saveThread.join();}
+                catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    logStatic(Level.SEVERE, "Exception in updateSelfLinux(); Stacktrace: " + ex.getStackTrace(), ex);
+                }
+                alreadySaved = true;
+                res = updater.linuxUpdater();
+            }
+            else {
+                try { saveThread.join();}
+                catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    logStatic(Level.SEVERE, "Exception in updateSelfMacOS(); Stacktrace: " + ex.getStackTrace(), ex);
+                }
+                res = updater.macOSUpdater();   
+            }
+            if(!(res.equals(""))) logStatic(Level.SEVERE, res, null);
+            System.exit(0);
         }
-        alreadySaved = true;
-
-        //If the exe exists, replace it
-        if(new File(System.getProperty("user.dir") + "/BHB.exe").exists()){
-            executeCommandWindows("cmd.exe /c cd " +  System.getProperty("user.dir") + " & taskkill /F /PID " + getPID() 
-                + " & curl -L -O " + "https://github.com/DavidArthurCole/bhb/releases/download/" + latest + "/BHB.exe & BHB.exe");
-        }
-        
-        //If the jar exists, replace it
-        if(new File(System.getProperty("user.dir") + "/BHB.jar").exists()){
-            executeCommandWindows("cmd.exe /c cd " +  System.getProperty("user.dir") + " & taskkill /F /PID " + getPID() 
-                + " & curl -L -O " + "https://github.com/DavidArthurCole/bhb/releases/download/" + latest + "/BHB.jar & java -jar BHB.jar");
-        }
-    }
-
-    private void updateSelfLinux(){
-        executeCommandLinux("#!/bin/bash\n\ncd " + System.getProperty("user.dir") + "\nwget https://github.com/DavidArthurCole/bhb/releases/download/" + latest + "/BHB.jar -O BHB.jar && java -jar BHB.jar " + Long.toString(getPID()));
-        new Thread(this::forceSave).start();
-        alreadySaved = true;
-        System.exit(0);
-    }
-
-    private void updateSelfMacOS(){
-        Thread saveThread = new Thread(this::forceSave);
-        saveThread.start();
-        try { saveThread.join();}
-        catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            logStatic(Level.SEVERE, "Exception in updateSelfMacOS(); Stacktrace: " + ex.getStackTrace(), ex);
-        }
-        executeCommandMacOS("cd " + System.getProperty("user.dir") + " && curl -H \"Accept: application/zip\" -L -o BHB.jar 'https://github.com/DavidArthurCole/bhb/releases/download/" + latest + "/BHB.jar' && java -jar BHB.jar " + Long.toString(getPID()));
-        System.exit(0);
     }
 
     //======================================================
@@ -1091,79 +1058,8 @@ public class BlendGUI extends Application {
         logStatic(Level.INFO, "Old process killed", null);
     }
 
-    //Run a command asynchronously, outside of the JVM on Windows
-    private void executeCommandWindows(String command) {
-        try {
-            Runtime.getRuntime().exec(command).waitFor();
-        } catch (IOException e) {
-            logStatic(Level.SEVERE, e.getMessage(), e);
-        } catch (InterruptedException e){
-            Thread.currentThread().interrupt();
-            logStatic(Level.SEVERE, e.getMessage(), e);
-        }
-    }
-
-    //Roundabout way to execute a command separate from the JVM on linux
-    private void executeCommandLinux(String command) {
-
-        //Write the command to the shell script
-        try(FileWriter writer = new FileWriter(new File(System.getProperty("user.dir") + "/Update.sh"))){
-            writer.write(command);
-        }
-        catch(IOException ex){
-            //Catch any IO errors - should not ever be a problem
-            Alert errorAlert = new Alert(AlertType.ERROR, "Error updating, please report this.");
-            errorAlert.setHeaderText(ex.getLocalizedMessage());
-            errorAlert.showAndWait();
-            logStatic(Level.SEVERE, "Exception thrown in executeCommandLinux(); Stacktrace: " + ex.getStackTrace(), ex);
-            return;
-        }
-
-        // nohup detaches the script from the JVM process itself
-        ProcessBuilder processBuilder = new ProcessBuilder().command("nohup", "sh", "Update.sh");
-
-        try {
-            //Set the process to start in the dir that the .jar is located
-            processBuilder.directory(new File(System.getProperty("user.dir")));
-            //Don't shoot errors - log them instead
-            processBuilder.redirectErrorStream(false);
-            //Create and start the process
-            Process updateProcess = processBuilder.start();
-            //Waitfor prevents pre-emptive termination
-            updateProcess.waitFor();
-    
-        } catch (IOException e) {
-            logStatic(Level.SEVERE, "Error thrown from processBuilder in executeCommandLinux(); Stacktrace: " + e.getStackTrace(), e);
-        }
-        catch(InterruptedException ex){
-            logStatic(Level.SEVERE, "Exception in executeCommandLinux(); Stacktrace: " + ex.getStackTrace(), ex);
-            Thread.currentThread().interrupt();
-        }
-    }
-
-    private void executeCommandMacOS(String command){
-        try {
-            Runtime.getRuntime().exec(
-                new String[]{"/bin/zsh", "-c", command}
-            ).waitFor();
-        } catch (IOException e) {
-            logStatic(Level.SEVERE, e.getMessage(), e);
-        } catch (InterruptedException e){
-            Thread.currentThread().interrupt();
-            logStatic(Level.SEVERE, e.getMessage(), e);
-        }
-    }
-
-    //Returns the working PID of the JVM on all OS-es
-    private static long getPID() {
-        return Long.parseLong(java.lang.management.ManagementFactory.getRuntimeMXBean().getName().split("@")[0]);
-    }
-
     //Non-intrusive loading, will not force
     private boolean tryLoad(Stage stage){
-
-        //Sto codes from file
-        String[] codes = new String[6];
 
         //Create a new dialog
         FileChooser configChooser = new FileChooser();
@@ -1181,8 +1077,8 @@ public class BlendGUI extends Application {
                 for(int i = 0; i < 6; i++) {
                     String line = bReader.readLine();
                     if(line != null){
-                        if(isHexOk(line)){
-                            codes[i] = line;
+                        if(isHexOk(line) || line.equals("")){
+                            codeFields[i].setText(line);
                         }
                         else {
                             //Error in file reading - invalid chars reached
@@ -1191,10 +1087,11 @@ public class BlendGUI extends Application {
                         }
                     }    
                 }
-                //Even if codes are null, should allow a pass here
-                for(int i = 0; i < 6; i++) {
-                    if(codes[i] != null) codeFields[i].setText(codes[i]);    
-                }
+
+                //Set justification priority from tempstore, default val is "Left"
+                String justificationSaved = bReader.readLine();
+                justificationPriority.setValue((justificationSaved != null) ? justificationSaved : "Left");
+
                 logStatic(Level.INFO, "tryLoad(); execution was succesful", null);
                 return true;
             }
@@ -1214,9 +1111,6 @@ public class BlendGUI extends Application {
         File tempStore = new File(System.getProperty("user.dir") + "/tempstore.txt");
         if(!tempStore.exists()) return;
 
-        //Create a store for codes
-        String[] codes = new String[6];
-
         //try to make the file readable ~ Will only work on Windows
         try{
             Runtime.getRuntime().exec("attrib -H \"" +  System.getProperty("user.dir") + "/tempstore.txt\"" );
@@ -1230,20 +1124,22 @@ public class BlendGUI extends Application {
         BufferedReader bReader = new BufferedReader(fReader);)
         { 
             String line;
+            String[] codes = new String[6];
             //Read the codes
             for(int i = 0; i < 6; i++) if((line = bReader.readLine()) != null && isHexOk(line)) codes[i] = line;
-            for(int i = 0; i < 6; i++) if(codes[i] != null) codeFields[i].setText(codes[i]);   
+            for(int i = 0; i < 6; i++) if(codes[i] != null) codeFields[i].setText(codes[i]); 
             enterNicknameBHB.setText(bReader.readLine().replace("\n", ""));
 
             //Set theme based on config
             String savedTheme = bReader.readLine();
             if(savedTheme.equals("DARK")) {
-                changeTheme( mainScene, labelColorPreviews);
+                changeTheme(mainScene, labelColorPreviews);
                 darkMode.setValue("On");
             }
 
             String savedJustification = bReader.readLine();
             if(savedJustification != null) justificationPriority.setValue(savedJustification);
+            else justificationPriority.setValue("Left");
         }
         catch(IOException | StringIndexOutOfBoundsException e)
         {
@@ -1258,7 +1154,6 @@ public class BlendGUI extends Application {
     private void trySave(){
 
         int goodCodes = 0;
-
         for(int i = 0; i < 6; i++) if(isHexOk(codeFields[i].getText())) goodCodes++;
 
         if(goodCodes >= 1){

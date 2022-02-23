@@ -1,4 +1,4 @@
-package com;
+package com.util.gui_helper;
 
 import java.util.Random;
 

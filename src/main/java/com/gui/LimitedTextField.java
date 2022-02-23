@@ -1,4 +1,4 @@
-package com;
+package com.gui;
 
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleIntegerProperty;
@@ -14,12 +14,14 @@ public class LimitedTextField extends TextField {
     private IntegerProperty maxLength = new SimpleIntegerProperty(this, "maxLength", -1);
     private StringProperty restrict = new SimpleStringProperty(this, "restrict");
 
-    public LimitedTextField(boolean upperCaseOnly) {
+    public LimitedTextField(boolean upperCaseOnly, String initRestrict, int maxLengthInit) {
         if(upperCaseOnly){
             this.setTextFormatter(new TextFormatter<>(change -> {
                 change.setText(change.getText().toUpperCase());
                 return change;
             }));
+            this.restrict.setValue(initRestrict);
+            this.maxLength.set(maxLengthInit);
         }
 
         textProperty().addListener(new ChangeListener<String>() {
@@ -42,27 +44,5 @@ public class LimitedTextField extends TextField {
                 }
             }
         });
-    }
-
-    /**
-     * Sets the max length of the text field.
-     *
-     * @param maxLength
-     *            The max length.
-     */
-    public void setMaxLength(int maxLength) {
-        this.maxLength.set(maxLength);
-    }
-
-    /**
-     * Sets a regular expression character class which restricts the user input.
-     *
-     * E.g. [0-9] only allows numeric values.
-     *
-     * @param restrict
-     *            The regular expression.
-     */
-    public void setRestrict(String restrict) {
-        this.restrict.set(restrict);
     }
 }
