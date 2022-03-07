@@ -54,6 +54,8 @@ import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.Optional;
 import java.util.Random;
@@ -131,7 +133,7 @@ public class BlendGUI extends Application {
     private HBox previewLabelsColorscheme = new HBox();
     private ComboBox<Scheme> schemes = new ComboBox<>();
     private LimitedTextField enterNicknameColorscheme = new LimitedTextField(false, "[A-Za-z0-9_]", -1);
-    private Scheme[] loadedSchemes = new Scheme[9];
+    private ArrayList<Scheme> loadedSchemes = new ArrayList<>();
 
     //BHB
     private VBox mainBHBBox = new VBox();   
@@ -623,7 +625,6 @@ public class BlendGUI extends Application {
         upButton.setTooltip(new Tooltip("Move code up"));
         upButton.setFont(new Font("Arial", 14));
         upButton.setStyle("-fx-font-weight: bold");
-        upButtons[(id - 1)] = upButton;
         upButton.setOnAction(e -> {
             if(id - 1 > 0 && isHexOk(codeField.getText())){
                 String currentText = codeField.getText();
@@ -633,6 +634,8 @@ public class BlendGUI extends Application {
                 codeFields[id - 2].setText(currentText);
             }
         });
+        if(id == 1) upButton.setDisable(true);
+        upButtons[(id - 1)] = upButton;
 
         HBox newBox = new HBox(codeId, codeField, upButton, codeColorLabel);
         newBox.setAlignment(Pos.CENTER);
@@ -939,8 +942,8 @@ public class BlendGUI extends Application {
         for(int i = 0; i < 32; ++i) randomArray[i] = Character.toString("0123456789abcdef".charAt(random.nextInt(15)));
 
         //Create the scheme
-        if(loadedSchemes[7] == null) loadedSchemes[7] = new Scheme("Random", randomArray);
-        else loadedSchemes[7].setScheme(randomArray);
+        if(loadedSchemes.get(0) == null) loadedSchemes.set(0, new Scheme("Random", randomArray));
+        else loadedSchemes.get(0).setScheme(randomArray);
     }
 
     //Allows for new generation mid program
@@ -950,8 +953,8 @@ public class BlendGUI extends Application {
         for(int i = 0; i < 32; ++i) randomHexArray[i] = new RandomHexGenerator().generate();
 
         //Create the scheme
-        if(loadedSchemes[8] == null) loadedSchemes[8] = new Scheme("Random Hex", randomHexArray);
-        else loadedSchemes[8].setScheme(randomHexArray);
+        if(loadedSchemes.get(1) == null) loadedSchemes.set(1, new Scheme("Random Hex", randomHexArray));
+        else loadedSchemes.get(1).setScheme(randomHexArray);
     }
 
     //======================================================
@@ -1127,7 +1130,7 @@ public class BlendGUI extends Application {
             String[] codes = new String[6];
             //Read the codes
             for(int i = 0; i < 6; i++) if((line = bReader.readLine()) != null && isHexOk(line)) codes[i] = line;
-            for(int i = 0; i < 6; i++) if(codes[i] != null) codeFields[i].setText(codes[i]); 
+            for(int i = 0; i < 6; i++) if(codes[i] != null) codeFields[i].setText(codes[i]);
             enterNicknameBHB.setText(bReader.readLine().replace("\n", ""));
 
             //Set theme based on config
@@ -1275,16 +1278,14 @@ public class BlendGUI extends Application {
     //Initialize schemes for startup
     private void initSchemes(){
 
-        loadedSchemes[0] = new Scheme("Rainbow", "c46eab9d5".split("")); //Rainbow
-        loadedSchemes[1] = new Scheme("Master", "4cffff".split("")); //Master
-        loadedSchemes[2] = new Scheme("Ordered", "0123456789abcdef".split("")); //Ordered
-        loadedSchemes[3] = new Scheme("Millionaire", "666eeefff".split("")); //Millionaire
-        loadedSchemes[4] = new Scheme("Phoenix", "4c6ef78".split("")); //Phoenix
-        loadedSchemes[5] = new Scheme("Dragon", "55da22".split("")); //Dragon
-        loadedSchemes[6] = new Scheme("Bacon", "c6666".split("")); //Bacon
-        // loadedSchemes[7] IS RESERVED
-        // loadedSchemes[8] IS RESERVED
-        //DO NOT ADD SCHEMES TO INDEX 7 OR 8 THIS WILL GO HORRIBLY WRONG 
+        loadedSchemes = new ArrayList<>(
+            Arrays.asList(
+                null, //Reserved for random
+                null, //Reserved for random hex
+                new Scheme("Rainbow", "4c6eab9d5".split("")), //Rainbow
+                new Scheme("Ordered", "0123456789abcdef".split("")) //Ordered
+            ) 
+        );
 
         //Make the random scheme different every time
         generateNewRandomScheme();
@@ -1294,8 +1295,13 @@ public class BlendGUI extends Application {
     }
 
     //Boolean is the hex valid; ie, does it contain any invalid chars, is it 6 chars, etc.
-    public static boolean isHexOk(String hex){ 
-        return(hex != null && hex.matches("^[a-fA-F0-9]+$") && hex.length() == 6);
+    public static boolean isHexOk(String hex){
+        try{
+            return(Integer.parseInt(hex, 16) >= 0) && (hex.length() == 6);
+        }
+        catch(Exception e){
+            return false;
+        }
     }
     
 }

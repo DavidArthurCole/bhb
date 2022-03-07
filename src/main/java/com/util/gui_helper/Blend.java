@@ -8,8 +8,8 @@ public class Blend {
 
     private Blend(){}
 
-    private static String padWithZeros(String inputString){
-        return String.format("%1$" + 2 + "s", inputString).replace(' ', '0');
+    private static String padWithZeros(int inputInt){
+        return String.format("%1$" + 2 + "s", Integer.toHexString(inputInt)).replace(' ', '0');
     }
 
     public static List<Integer> findSplitLengths(String word, int numSplits){
@@ -58,19 +58,42 @@ public class Blend {
         //Output will be appended over time
         StringBuilder output = new StringBuilder();
 
+        Integer[] componentsOne = new Integer[]{
+            hexR(hexOne),
+            hexG(hexOne),
+            hexB(hexOne)
+        };
+
+        Integer[] compDif = new Integer[]{
+            hexR(hexTwo) - hexR(hexOne),
+            hexG(hexTwo) - hexG(hexOne),
+            hexB(hexTwo) - hexB(hexOne)
+        };
+
         //Loop through each step
         for(float j = 0; j <= (input.length() - 1); ++j){
-            output.append("&#" 
-            + (padWithZeros(Integer.toHexString(Integer.parseInt(hexOne.substring(0, 2),16) + 
-                (int)((j / (input.length() - 1)) * (Integer.parseInt(hexTwo.substring(0, 2),16) - Integer.parseInt(hexOne.substring(0, 2),16)))))
-            + padWithZeros(Integer.toHexString(Integer.parseInt(hexOne.substring(2, 4),16) + 
-                (int)((j / (input.length() - 1)) * (Integer.parseInt(hexTwo.substring(2, 4),16) - Integer.parseInt(hexOne.substring(2, 4),16)))))
-            + padWithZeros(Integer.toHexString(Integer.parseInt(hexOne.substring(4, 6),16) + 
-                (int)((j / (input.length() - 1)) * (Integer.parseInt(hexTwo.substring(4, 6),16) - Integer.parseInt(hexOne.substring(4, 6),16)))))).toUpperCase()
-            + input.charAt((int)j));
+            float gainPercent = (j / (input.length() - 1));
+            output.append("&#" + ( 
+                padWithZeros((int)(componentsOne[0] + (gainPercent * compDif[0]))) +
+                padWithZeros((int)(componentsOne[1] + (gainPercent * compDif[1]))) +
+                padWithZeros((int)(componentsOne[2] + (gainPercent * compDif[2])))
+            ).toUpperCase() + input.charAt((int)j));
         }
-
+        
         return output.toString();
+    }
+
+    //Splitters to return R G and B values (as Integers) of a hex string
+    private static Integer hexR(String hex){
+        return Integer.parseInt(hex.substring(0, 2), 16);
+    }
+
+    private static Integer hexG(String hex){
+        return Integer.parseInt(hex.substring(2, 4), 16);
+    }
+
+    private static Integer hexB(String hex){
+        return Integer.parseInt(hex.substring(4, 6), 16);
     }
 
     public static String blendMain(int howManyCodes, String input, String[] codeArray, boolean rightJustified){
