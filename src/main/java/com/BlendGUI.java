@@ -8,34 +8,14 @@ import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.ButtonBar;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.ColorPicker;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.ContentDisplay;
-import javafx.scene.control.Label;
-import javafx.scene.control.Menu;
-import javafx.scene.control.MenuBar;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.RadioButton;
-import javafx.scene.control.Tooltip;
+import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
-import javafx.scene.layout.Background;
-import javafx.scene.layout.BackgroundFill;
-import javafx.scene.layout.Border;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.BorderStroke;
-import javafx.scene.layout.BorderStrokeStyle;
-import javafx.scene.layout.CornerRadii;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.text.Font;
@@ -62,6 +42,7 @@ import java.util.Random;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.gui.BHBAlert;
 import com.gui.CodeColorLabel;
 import com.gui.CopyButtonIcon;
 import com.gui.LimitedTextField;
@@ -85,16 +66,18 @@ public class BlendGUI extends Application {
     //|                 GLOBAL VARS                        |
     //======================================================
 
+    //Global current version indicator
+    private static final String CURRENT_VERSION = "1.5.1";
+    //Gets the latest version number from the git repo
+    private final String LATEST_VERSION = getTagFromGitJson("tag_name");
+
     //Enable verbose logging
     private static boolean verboseLogging = false;
     //Count logged items
     private static int loggedItems = 0;
     //Init log file
     private File logFile = new File("log.txt");
-    //Global current version indicator
-    private static final String VERSION = "1.5.1";
-    //Gets the latest version number from the git repo
-    private final String latest = getTagFromGitJson("tag_name");
+    
     //Global updater object
     private Updater updater; 
     //Default theme is light
@@ -231,7 +214,7 @@ public class BlendGUI extends Application {
 
         updateUndoButton();
 
-        updater = new Updater(latest);
+        updater = new Updater(LATEST_VERSION);
     }
 
     //======================================================
@@ -248,7 +231,7 @@ public class BlendGUI extends Application {
     private void buildBHB(Stage stage){
 
         //Make sure codes get saved in the event of shutdown
-        Runtime.getRuntime().addShutdownHook(new Thread(this::forceSave));
+        Runtime.getRuntime().addShutdownHook(new Thread(this::saveApplicationState));
         //Log file handler, deleting if empty
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try{
@@ -280,8 +263,8 @@ public class BlendGUI extends Application {
         settingsPane.getChildren().clear();
 
         ImageView settingsIcon = new ImageView(new Image(getClass().getClassLoader().getResource("exit.png").toString()));
-        settingsIcon.setFitWidth(40);
-        settingsIcon.setFitHeight(40);
+        settingsIcon.setFitWidth(30);
+        settingsIcon.setFitHeight(30);
 
         Button exitButton = new Button();
         exitButton.setMinWidth(mainScene.getWidth());
@@ -361,14 +344,14 @@ public class BlendGUI extends Application {
      */
     private void buildMenuItemsBHB(Stage stage){
 
-        saveItem.setOnAction( e -> trySave());
+        saveItem.setOnAction( e -> saveCodes());
 
         loadItem.setOnAction( e -> {
             boolean success = tryLoad(stage);
             if(!success){
-                Alert errorAlert = new Alert(AlertType.ERROR, "The file you selected is not recognized as a valid configuration file. If you believe this is an error, please reach out.");
-                errorAlert.setHeaderText("Invalid configuration file");
-                errorAlert.showAndWait();
+                new BHBAlert(AlertType.ERROR, 
+                "The file you selected is not recognized as a valid configuration file. If you believe this is an error, please reach out.",
+                "Error", "Invalid configuration file").showAndWait();
             }
         });
 
@@ -382,29 +365,21 @@ public class BlendGUI extends Application {
 
         aboutItem.setOnAction(e -> {
             String publishDate = getTagFromGitJson("published_at");
+            String releaseDate = compareVersions(CURRENT_VERSION, LATEST_VERSION) == -1 ? 
+                "Release date unknown" : "Release date: " + publishDate.substring(0, publishDate.length() - 1).replace("T", " ").split(" ")[0];
 
-            String releaseDate;
-            if(compareVersions(VERSION, getTagFromGitJson("tag_name")) == -1) releaseDate = "Release date unknown";
-            else releaseDate = "Release date: " + publishDate.substring(0, publishDate.length() - 1).replace("T", " ");
-
-            Alert aboutAlert = new Alert(AlertType.INFORMATION, releaseDate);
-            aboutAlert.setTitle("About BHB");
-            aboutAlert.setHeaderText("Version: " + VERSION);
-            aboutAlert.showAndWait();
+            new BHBAlert(AlertType.INFORMATION, releaseDate, "About BHB", "Version: " + CURRENT_VERSION).showAndWait();
         });
 
         gitHubItem.setOnAction(f -> getHostServices().showDocument("https://github.com/DavidArthurCole/bhb"));
 
         updateCheckerItem.setOnAction(e -> {
             
-            if(compareVersions(VERSION, getTagFromGitJson("tag_name")) == -1) startSelfUpdate();
+            if(compareVersions(CURRENT_VERSION, LATEST_VERSION) == -1) startSelfUpdate();
             else{
-                Alert updateAlert = new Alert(AlertType.INFORMATION, "BHB is up to date, (version " + VERSION + ")");
-                updateAlert.setHeaderText("Up to date");
-                updateAlert.setTitle("No updates found");
-                updateAlert.showAndWait();
+                new BHBAlert(AlertType.INFORMATION, "BHB is up to date, (version " + CURRENT_VERSION + ")",
+                "No updates found", "Up to date").showAndWait();
             }
-
         });
     }
 
@@ -968,8 +943,7 @@ public class BlendGUI extends Application {
         ButtonType yes = new ButtonType("Yes", ButtonBar.ButtonData.CANCEL_CLOSE);
 
         Alert updateAlert = new Alert(AlertType.CONFIRMATION, "An updated version of BHB is available. Current: " 
-            + VERSION + ", New: " + latest + ". Update now? This will restart your program.", no, yes);
-
+            + CURRENT_VERSION + ", New: " + LATEST_VERSION + ". Update now? This will restart your program.", no, yes);
         updateAlert.setHeaderText("Out of date");
         updateAlert.setTitle("Updates found");
         Optional<ButtonType> result = updateAlert.showAndWait();
@@ -977,7 +951,7 @@ public class BlendGUI extends Application {
         if(result.orElse(no) == yes){
             String osName = System.getProperty("os.name");
             String res;
-            Thread saveThread = new Thread(this::forceSave);
+            Thread saveThread = new Thread(this::saveApplicationState);
             saveThread.start();
 
             if(osName.length() >= 7 &&  osName.substring(0, 7).equals("Windows")){
@@ -1020,8 +994,8 @@ public class BlendGUI extends Application {
         //Do not log if not error if verbose is off
         if(!verboseLogging && logLevel.equals(Level.INFO)) return;
         //Do not log "thrown" with info, as it will be null
-        if(logLevel.equals(Level.INFO))  Logger.getGlobal().log(logLevel, logMessage);
-        else  Logger.getGlobal().log(logLevel,  logMessage, thrown);
+        if(logLevel.equals(Level.INFO)) Logger.getGlobal().log(logLevel, logMessage);
+        else Logger.getGlobal().log(logLevel,  logMessage, thrown);
         ++loggedItems;
     }
 
@@ -1154,7 +1128,7 @@ public class BlendGUI extends Application {
     }
 
     //Non-intrusive saving, will not force
-    private void trySave(){
+    private void saveCodes(){
 
         int goodCodes = 0;
         for(int i = 0; i < 6; i++) if(isHexOk(codeFields[i].getText())) goodCodes++;
@@ -1183,26 +1157,19 @@ public class BlendGUI extends Application {
                 }
                 catch(IOException | StringIndexOutOfBoundsException e)
                 {
+                    new BHBAlert(AlertType.ERROR, "There was a problem saving the config.", "", "Error: " + e.getLocalizedMessage()).showAndWait();
                     logStatic(Level.SEVERE, "Exception in trySave(); Stacktrace: " + e.getStackTrace(), e);
-
-                    Alert errorAlert = new Alert(AlertType.ERROR, "There was an error saving your configuration, please try again.");
-                    errorAlert.setHeaderText("Error saving");
-                    errorAlert.showAndWait();
                 }
             }
         }
         else{
-            Alert errorAlert = new Alert(AlertType.ERROR, "You do not have any codes to save. No file was created.");
-            errorAlert.setHeaderText("Nothing to save");
-            errorAlert.showAndWait();
-
+            new BHBAlert(AlertType.ERROR, "You do not have any codes to save. No file was created.", "", "Nothing to save").showAndWait();
             logStatic(Level.INFO, "Empty save was attempted, and intercepted", null);
-        }  
-       
+        }   
     }
 
     //Intrusive saving technique, will disrupt the program's functionality temporarily
-    private void forceSave(){
+    private void saveApplicationState(){
 
         //Flag used during updates so that the JVM doesn't terminate and error out
         if(!alreadySaved){
@@ -1226,11 +1193,8 @@ public class BlendGUI extends Application {
             }
             catch(IOException | StringIndexOutOfBoundsException e)
             {
+                new BHBAlert(AlertType.ERROR, "There was a problem saving the config.", "", "Error: " + e.getLocalizedMessage()).showAndWait();
                 logStatic(Level.SEVERE, "Exception in forceSave(); Stacktrace: " + e.getStackTrace(), e);
-                
-                Alert errorAlert = new Alert(AlertType.ERROR, "There was an error saving your configuration, please try again.");
-                errorAlert.setHeaderText("Error saving");
-                errorAlert.showAndWait();
             }
         }
     }
@@ -1242,9 +1206,7 @@ public class BlendGUI extends Application {
             return(new JSONObject(IOUtils.toString(new URL(url), StandardCharsets.UTF_8)).toString());
         }
         catch(IOException ex){
-            Alert errorAlert = new Alert(AlertType.ERROR, "An unexpected error occured.");
-            errorAlert.setHeaderText("Error: " + ex.getLocalizedMessage());
-            errorAlert.showAndWait();
+            new BHBAlert(AlertType.ERROR, "An unexpected error occurred.", "", "Error: " + ex.getLocalizedMessage()).showAndWait();
             logStatic(Level.SEVERE, "IOException during getJSON(); Stacktrace: " + ex.getStackTrace(), ex);
             return null;
         }
