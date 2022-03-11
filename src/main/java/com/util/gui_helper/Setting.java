@@ -7,6 +7,13 @@ public class Setting{
     private String value;
     private String[] options;
 
+    /**
+     * Constructor for a Setting object
+     * @param name The name of the setting
+     * @param description The description of what the setting controls/does
+     * @param value Default value for the setting
+     * @param options The possible values of the setting
+     */
     public Setting(String name, String description, String value, String[] options){
         this.name = name;
         this.description = description;

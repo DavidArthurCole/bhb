@@ -9,11 +9,10 @@ import javafx.beans.value.ObservableValue;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
 
-
 public class LimitedTextField extends TextField {
 
-    private IntegerProperty maxLength = new SimpleIntegerProperty(this, "maxLength", -1);
-    private StringProperty restrict = new SimpleStringProperty(this, "restrict");
+    private final IntegerProperty maxLength = new SimpleIntegerProperty(this, "maxLength", -1);
+    private final StringProperty restrict = new SimpleStringProperty(this, "restrict");
 
     public LimitedTextField(boolean upperCaseOnly, String initRestrict, int maxLengthInit) {
         if(upperCaseOnly){
@@ -26,7 +25,7 @@ public class LimitedTextField extends TextField {
         this.restrict.set(initRestrict);
         this.maxLength.set(maxLengthInit);
 
-        textProperty().addListener(new ChangeListener<String>() {
+        this.textProperty().addListener(new ChangeListener<String>() {
             private boolean ignore;
 
             @Override

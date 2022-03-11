@@ -1,6 +1,6 @@
 package com.gui;
 
-import com.BlendGUI;
+import com.BHBMainGUI;
 
 import javafx.scene.control.Label;
 import javafx.scene.paint.Color;
@@ -15,7 +15,7 @@ public class PreviewLabel extends Label {
     public PreviewLabel(char c, String color, int fullLength){
         super(Character.toString(c));
         Character principleFirstChar = color.toCharArray()[0];
-        if(BlendGUI.isHexOk(color)) this.setTextFill(Color.rgb(Integer.parseInt(color.substring(0,2), 16), Integer.parseInt(color.substring(2,4), 16), Integer.parseInt(color.substring(4,6), 16)));
+        if(BHBMainGUI.isHexOk(color)) this.setTextFill(Color.rgb(Integer.parseInt(color.substring(0,2), 16), Integer.parseInt(color.substring(2,4), 16), Integer.parseInt(color.substring(4,6), 16)));
         else this.setTextFill(
                 this.codeMap.get(principleFirstChar) == null ? Color.rgb(0, 0, 0) :
                     Color.rgb(

@@ -60,7 +60,7 @@ import java.util.logging.*;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 
-public class BlendGUI extends Application {
+public class BHBMainGUI extends Application {
 
     //======================================================
     //|                 GLOBAL VARS                        |
@@ -89,7 +89,7 @@ public class BlendGUI extends Application {
     //Stores the default preferred height for previewLabelsBHB
     private static double defaultPreviewHeight;
     //Creates a logger for debug
-    private Logger log = Logger.getLogger(BlendGUI.class.getSimpleName());
+    private Logger log = Logger.getLogger(BHBMainGUI.class.getSimpleName());
     //Prevents threading errors in some cases
     private boolean alreadySaved = false;
     //Passed around for use in different UI elements in colorscheme
