@@ -115,7 +115,7 @@ public class BlendGUI extends Application {
     private Button copyButtonColorscheme = new Button();
     private HBox previewLabelsColorscheme = new HBox();
     private ComboBox<Scheme> schemes = new ComboBox<>();
-    private LimitedTextField enterNicknameColorscheme = new LimitedTextField(false, "[A-Za-z0-9_]", -1);
+    private LimitedTextField enterNicknameColorscheme = new LimitedTextField(false, "[A-Za-z0-9_\\[\\] ]", -1);
     private ArrayList<Scheme> loadedSchemes = new ArrayList<>();
 
     //BHB
@@ -127,7 +127,7 @@ public class BlendGUI extends Application {
 
     private LimitedTextField lastEnteredField;
     private LimitedTextField[] codeFields = new LimitedTextField[6];
-    private LimitedTextField enterNicknameBHB = new LimitedTextField(false, "[A-Za-z0-9_]", -1);
+    private LimitedTextField enterNicknameBHB = new LimitedTextField(false, "[A-Za-z0-9_\\[\\]]", -1);
 
     private HBox previewLabelsBHBBox = new HBox();
     private HBox codesAndPickerBox = new HBox();
@@ -276,7 +276,6 @@ public class BlendGUI extends Application {
         HBox darkModeBox = buildSetting(darkMode);
         VBox settingsBox = new VBox(justificationBox, darkModeBox);
 
-
         settingsPane.setTop(settingsBox);
         settingsPane.setBottom(exitButton);
         BorderPane.setAlignment(exitButton, Pos.CENTER);
@@ -289,8 +288,8 @@ public class BlendGUI extends Application {
         masterBox.setAlignment(Pos.CENTER);
         masterBox.setBorder(new Border(new BorderStroke(Color.BLACK, BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderStroke.THIN)));
         ImageView helpIcon = new ImageView(new Image(getClass().getClassLoader().getResource("help.png").toString()));
-        helpIcon.setFitWidth(30);
-        helpIcon.setFitHeight(30);
+        helpIcon.setFitWidth(15);
+        helpIcon.setFitHeight(15);
         
         Label helpLabel = new Label();
         helpLabel.setAlignment(Pos.BASELINE_RIGHT);
@@ -347,8 +346,7 @@ public class BlendGUI extends Application {
         saveItem.setOnAction( e -> saveCodes());
 
         loadItem.setOnAction( e -> {
-            boolean success = tryLoad(stage);
-            if(!success){
+            if(!tryLoad(stage)){
                 new BHBAlert(AlertType.ERROR, 
                 "The file you selected is not recognized as a valid configuration file. If you believe this is an error, please reach out.",
                 "Error", "Invalid configuration file").showAndWait();
@@ -821,6 +819,7 @@ public class BlendGUI extends Application {
         //Fills the codearray with the codes
         for(int i = 0; i < userInputLength; ++i, ++counter){
             //Next char to be added
+            if(enterNicknameColorscheme.getText().charAt(i) == ' ') counter --;
             if(counter >= schemeCodes.length) counter = 0;
             if(selectedScheme.toString().equals("Random Hex")){
                 nickBuilder.append("&#" + schemeCodes[counter] + enterNicknameColorscheme.getText().charAt(i));

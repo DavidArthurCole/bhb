@@ -11,6 +11,7 @@ import javafx.scene.control.TextFormatter;
 
 
 public class LimitedTextField extends TextField {
+
     private IntegerProperty maxLength = new SimpleIntegerProperty(this, "maxLength", -1);
     private StringProperty restrict = new SimpleStringProperty(this, "restrict");
 
@@ -20,9 +21,10 @@ public class LimitedTextField extends TextField {
                 change.setText(change.getText().toUpperCase());
                 return change;
             }));
-            this.restrict.setValue(initRestrict);
-            this.maxLength.set(maxLengthInit);
         }
+
+        this.restrict.set(initRestrict);
+        this.maxLength.set(maxLengthInit);
 
         textProperty().addListener(new ChangeListener<String>() {
             private boolean ignore;
