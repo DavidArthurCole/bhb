@@ -46,4 +46,8 @@ public class LimitedTextField extends TextField {
             }
         });
     }
+
+    public void setRestrict(String restrict) {
+        this.restrict.set(restrict);
+    }
 }

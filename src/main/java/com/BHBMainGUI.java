@@ -5,60 +5,35 @@ package com;
 //======================================================
 
 import javafx.application.Application;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
+import javafx.geometry.*;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyCodeCombination;
-import javafx.scene.input.KeyCombination;
+import javafx.scene.image.*;
+import javafx.scene.input.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
-import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
-import javafx.stage.FileChooser;
-import javafx.stage.Stage;
-import javafx.stage.Window;
+import javafx.scene.text.*;
+import javafx.stage.*;
 
 import java.awt.datatransfer.StringSelection;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Deque;
-import java.util.Optional;
-import java.util.Random;
+import java.awt.datatransfer.Clipboard;
+import java.awt.Toolkit;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.gui.BHBAlert;
-import com.gui.CodeColorLabel;
-import com.gui.CopyButtonIcon;
-import com.gui.LimitedTextField;
-import com.gui.PreviewLabel;
-import com.util.gui_helper.Blend;
-import com.util.gui_helper.RandomHexGenerator;
-import com.util.gui_helper.Scheme;
-import com.util.gui_helper.Setting;
-import com.util.gui_helper.SlotMachineColors;
-import com.util.updater.Updater;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.net.URL;
+import java.util.*;
+import java.util.logging.*;
 
 import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
-import java.util.logging.*;
-import java.awt.Toolkit;
-import java.awt.datatransfer.Clipboard;
+import com.google.gson.*;
+
+import com.gui.*;
+import com.util.gui_helper.*;
+import com.util.updater.Updater;
 
 public class BHBMainGUI extends Application {
 
@@ -67,9 +42,9 @@ public class BHBMainGUI extends Application {
     //======================================================
 
     //Global current version indicator
-    private static final String CURRENT_VERSION = "1.5.1";
+    private static final String CURRENT_VERSION = "1.4.9"; // Next is 1.5.1
     //Gets the latest version number from the git repo
-    private final String LATEST_VERSION = getTagFromGitJson("tag_name");
+    private static final String LATEST_VERSION = getTagFromGitJson("tag_name");
 
     //Enable verbose logging
     private static boolean verboseLogging = false;
@@ -159,7 +134,7 @@ public class BHBMainGUI extends Application {
 
     //Settings
     private BorderPane settingsPane = new BorderPane();
-    private Setting justificationPriority = new Setting("Justification Priority", "When a string cannot evenly be split, there will need to be longer strings on one side. This setting changes which side gets longer strings.", 
+    private Setting justificationPriority = new Setting("Justification Priority", "When a string cannot evenly be split, there will need to be longer strings on one side.\nThis setting changes which side gets longer strings.", 
     "Left", new String[]{"Left", "Right"}){
         @Override
         public void execute(){
@@ -172,6 +147,14 @@ public class BHBMainGUI extends Application {
             changeTheme(mainScene, previewColorLabels);
         }
     };
+    private Setting expandCS2 = new Setting("De-limit Inputs", "Allow use of all characters in the ColorScheme 2 and BHB input fields.", "Off", new String[]{"Off", "On"}){
+        @Override
+        public void execute(){
+            enterNicknameColorscheme.setRestrict(this.getValue().equals("Off") ? "[A-Za-z0-9_\\[\\] ]" : ".");
+            enterNicknameBHB.setRestrict(this.getValue().equals("Off") ? "[A-Za-z0-9_\\[\\] ]" : ".");
+        }
+    };
+
     private boolean renderOnHook = false;
     
     //======================================================
@@ -180,10 +163,14 @@ public class BHBMainGUI extends Application {
 
     //Main runtime
     public static void main(String[] args) {
-        //Catch flag for old linux process
+        
+        //Catch flag for old linux process (used in update thread)
         if(args.length >=1 && args[0] != null) killOldLinuxProcess(args);
+
         //Catch flag for verbose logging mode
         if(args.length >=2 && args[1] != null && args[1].equalsIgnoreCase("-v")) verboseLogging = true;
+
+        //Start the application
         launch();    
     }
 
@@ -243,12 +230,11 @@ public class BHBMainGUI extends Application {
                 logStatic(Level.SEVERE, "Exception in hook \"delete log file\"; Stacktrace: " + ex.getStackTrace(), ex);
             }
             //If no items are logged, delete the file - will not trigger in verbose mode
-            if(loggedItems < 1) logFile.delete();
+            if(loggedItems < 1 && !verboseLogging) logFile.delete();
         }));
 
         //Delete old update files that exist
-        File oldUpdater = new File(System.getProperty("user.dir") + "/Update.sh");
-        oldUpdater.delete();
+        new File(System.getProperty("user.dir") + "/Update.sh").delete();
 
         buildMenuItemsBHB(stage);
         buildMenusBHB();
@@ -262,23 +248,25 @@ public class BHBMainGUI extends Application {
     private void buildSettingsBox(){
         settingsPane.getChildren().clear();
 
-        ImageView settingsIcon = new ImageView(new Image(getClass().getClassLoader().getResource("exit.png").toString()));
-        settingsIcon.setFitWidth(30);
-        settingsIcon.setFitHeight(30);
 
-        Button exitButton = new Button();
-        exitButton.setMinWidth(mainScene.getWidth());
-        exitButton.setTooltip(new Tooltip("Exit the settings menu"));
-        exitButton.setGraphic(settingsIcon);
-        exitButton.setOnAction(e -> toggleSettings());
+        ImageView exitSettingsIcon = new ImageView(new Image(getClass().getClassLoader().getResource("exit.png").toString()));
+        exitSettingsIcon.setFitWidth(30);
+        exitSettingsIcon.setFitHeight(30);
+
+        Button exitSettingsButton = new Button();
+        exitSettingsButton.setMinWidth(mainScene.getWidth());
+        exitSettingsButton.setTooltip(new Tooltip("Exit the settings menu"));
+        exitSettingsButton.setGraphic(exitSettingsIcon);
+        exitSettingsButton.setOnAction(e -> toggleSettings());
 
         HBox justificationBox = buildSetting(justificationPriority);
         HBox darkModeBox = buildSetting(darkMode);
-        VBox settingsBox = new VBox(justificationBox, darkModeBox);
+        HBox expandCS2Box = buildSetting(expandCS2);
+        VBox settingsBox = new VBox(justificationBox, darkModeBox, expandCS2Box);
 
         settingsPane.setTop(settingsBox);
-        settingsPane.setBottom(exitButton);
-        BorderPane.setAlignment(exitButton, Pos.CENTER);
+        settingsPane.setBottom(exitSettingsButton);
+        BorderPane.setAlignment(exitSettingsButton, Pos.CENTER);
     }
 
     private HBox buildSetting(Setting setting){
@@ -295,7 +283,9 @@ public class BHBMainGUI extends Application {
         helpLabel.setAlignment(Pos.BASELINE_RIGHT);
         helpLabel.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
         helpLabel.setGraphic(helpIcon);
-        helpLabel.setTooltip(new Tooltip(setting.getDescription()));
+        Tooltip helpTooltip = new Tooltip(setting.getDescription());
+        helpTooltip.setStyle("-fx-font-size: 12");
+        helpLabel.setTooltip(helpTooltip);
 
         HBox newBox = new HBox();
         newBox.setAlignment(Pos.CENTER);
@@ -495,9 +485,7 @@ public class BHBMainGUI extends Application {
         unlockFields();
 
         colorPickerBox.setAlignment(Pos.CENTER);
-        colorPickerBox.setMinHeight(160);
-        colorPickerBox.setMinWidth(160);
-        colorPickerBox.setPrefWidth(220);
+        colorPickerBox.setPrefSize(220, 160);
         colorPickerBox.setBorder(boxBorder);
         colorPickerUI.setOnAction(e -> colorCircle.setFill(colorPickerUI.getValue()));
         colorPickerBox.getChildren().addAll(colorCircle, pickerAndCopyButtonBox);
@@ -610,14 +598,13 @@ public class BHBMainGUI extends Application {
         if(id == 1) upButton.setDisable(true);
         upButtons[(id - 1)] = upButton;
 
-        HBox newBox = new HBox(codeId, codeField, upButton, codeColorLabel);
-        newBox.setAlignment(Pos.CENTER);
-        newBox.setSpacing(6);
-        newBox.setMinWidth(200);
-        newBox.setMinHeight(30);
+        HBox codeBox = new HBox(codeId, codeField, upButton, codeColorLabel);
+        codeBox.setAlignment(Pos.CENTER);
+        codeBox.setSpacing(6);
+        codeBox.setMinSize(200, 30);
 
         logStatic(Level.INFO, "Created coebox with id: " + Integer.toString(id), null);
-        return newBox;
+        return codeBox;
     }
 
     //Builds components for colorscheme
@@ -1000,14 +987,13 @@ public class BHBMainGUI extends Application {
 
     //Initalize the static logger accessed during runtime
     private void initLogger(){
-        
+        //Delete existing log file
         if(logFile.exists()) logFile.delete();
         try {  
-            // This block configure the logger with handler and formatter  
+            // This block configures the logger with handler and formatter  
             FileHandler fh = new FileHandler("log.txt");  
             log.addHandler(fh);
-            SimpleFormatter formatter = new SimpleFormatter();  
-            fh.setFormatter(formatter);
+            fh.setFormatter(new SimpleFormatter());
             logStatic(Level.INFO, "Logger init", null);
     
         } catch (SecurityException | IOException e) {
@@ -1017,9 +1003,6 @@ public class BHBMainGUI extends Application {
     }
 
     private static void killOldLinuxProcess(String[] args){
-        //Solely for testing purposes
-        if(args[0].equals("0")) return;
-
         logStatic(Level.INFO, "Old process found with pid" + args[0] +  ", killing...", null);
         ProcessBuilder processBuilder = new ProcessBuilder().command("nohup", "kill", "-9", args[0]);
         try {
@@ -1036,7 +1019,6 @@ public class BHBMainGUI extends Application {
 
     //Non-intrusive loading, will not force
     private boolean tryLoad(Stage stage){
-
         //Create a new dialog
         FileChooser configChooser = new FileChooser();
         //Configure to only allow TXT files ~ set the title
@@ -1075,9 +1057,11 @@ public class BHBMainGUI extends Application {
             catch(IOException | StringIndexOutOfBoundsException ex)
             {
                 logStatic(Level.SEVERE, "Error during tryLoad(); Stacktrace: " + ex.getStackTrace(), ex);
+                return false;
             }
         }
-        return false;
+        //Handles null choice - A.K.A user cancelled
+        return true;
     }
 
     //Intrusive loading technique, will disrupt the program's functionality temporarily
@@ -1199,7 +1183,7 @@ public class BHBMainGUI extends Application {
     }
 
     //Parses JSON from a url
-    private String getJSON(String url) {
+    private static String getJSON(String url) {
 
         try{
             return(new JSONObject(IOUtils.toString(new URL(url), StandardCharsets.UTF_8)).toString());
@@ -1212,10 +1196,8 @@ public class BHBMainGUI extends Application {
     }
 
     //Pulls one tag from a json string
-    private String getTagFromGitJson(String tagName){
-        String json = getJSON("https://api.github.com/repos/DavidArthurCole/bhb/releases/latest");
-        JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
-        return(obj.get(tagName).getAsString());
+    private static String getTagFromGitJson(String tagName){
+        return(JsonParser.parseString(getJSON("https://api.github.com/repos/DavidArthurCole/bhb/releases/latest")).getAsJsonObject().get(tagName).getAsString());
     }
 
     //Compare two version numbers - returns -1 if v1 < v2
