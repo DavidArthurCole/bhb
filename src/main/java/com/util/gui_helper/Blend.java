@@ -40,13 +40,13 @@ public class Blend {
         return solution;
     }
 
-    public static String[] determineSplits(boolean rightJustified, List<Integer> splitLengths, String input){
+    public static List<String> determineSplits(boolean rightJustified, List<Integer> splitLengths, String input){
 
-        String[] result = new String[splitLengths.size()];
+        List<String> result = new ArrayList<>(splitLengths.size());
         if(rightJustified) Collections.reverse(splitLengths);
         int index = 0;
         for(int i = 0; i < splitLengths.size(); ++i){
-            result[i] = input.substring(index, index+splitLengths.get(i));
+            result.add(i, input.substring(index, index+splitLengths.get(i)));
             index+=splitLengths.get(i);
         }
 
@@ -58,25 +58,16 @@ public class Blend {
         //Output will be appended over time
         StringBuilder output = new StringBuilder();
 
-        Integer[] componentsOne = new Integer[]{
-            hexR(hexOne),
-            hexG(hexOne),
-            hexB(hexOne)
-        };
-
-        Integer[] compDif = new Integer[]{
-            hexR(hexTwo) - hexR(hexOne),
-            hexG(hexTwo) - hexG(hexOne),
-            hexB(hexTwo) - hexB(hexOne)
-        };
+        List<Integer> componentsOne = new ArrayList<>(List.of(hexR(hexOne), hexG(hexOne), hexB(hexOne)));
+        List<Integer> compDif = new ArrayList<>(List.of(hexR(hexTwo) - hexR(hexOne), hexG(hexTwo) - hexG(hexOne), hexB(hexTwo) - hexB(hexOne)));
 
         //Loop through each step
         for(float j = 0; j <= (input.length() - 1); ++j){
             float gainPercent = (j / (input.length() - 1));
             output.append("&#" + ( 
-                padWithZeros((int)(componentsOne[0] + (gainPercent * compDif[0]))) +
-                padWithZeros((int)(componentsOne[1] + (gainPercent * compDif[1]))) +
-                padWithZeros((int)(componentsOne[2] + (gainPercent * compDif[2])))
+                padWithZeros((int)(componentsOne.get(0) + (gainPercent * compDif.get(0)))) +
+                padWithZeros((int)(componentsOne.get(1) + (gainPercent * compDif.get(1)))) +
+                padWithZeros((int)(componentsOne.get(2) + (gainPercent * compDif.get(2))))
             ).toUpperCase() + input.charAt((int)j));
         }
         
@@ -96,18 +87,18 @@ public class Blend {
         return Integer.parseInt(hex.substring(4, 6), 16);
     }
 
-    public static String blendMain(int howManyCodes, String input, String[] codeArray, boolean rightJustified){
+    public static String blendMain(int howManyCodes, String input, List<String> codeList, boolean rightJustified){
 
         //New builder
         StringBuilder output = new StringBuilder();
         List<Integer> splitLengths = findSplitLengths(input, (howManyCodes - 1));
-        String[] splits = determineSplits(rightJustified, splitLengths, input);
+        List<String> splits = new ArrayList<>(determineSplits(rightJustified, splitLengths, input));
 
-        for(int i = 0, codeIndex = 0; i < splits.length; i++, codeIndex++){
-            if(i != (splits.length -1)) splits[i] = splits[i] + splits[i + 1].substring(0, 1);
+        for(int i = 0, codeIndex = 0; i < splits.size(); i++, codeIndex++){
+            if(i != (splits.size() -1)) splits.set(i, splits.get(i) + splits.get(i + 1).substring(0, 1));
 
-            String addendum = blendTwo(codeArray[codeIndex], codeArray[codeIndex + 1], splits[i]);
-            output.append(i != (splits.length - 1) ? addendum.substring(0, addendum.length() - 9) : addendum);
+            String addendum = blendTwo(codeList.get(codeIndex), codeList.get(codeIndex + 1), splits.get(i));
+            output.append(i != (splits.size() - 1) ? addendum.substring(0, addendum.length() - 9) : addendum);
         }
 
         return output.toString();

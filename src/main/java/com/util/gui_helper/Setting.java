@@ -1,11 +1,14 @@
 package com.util.gui_helper;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Setting{
 
     private String name;
     private String description;
     private String value;
-    private String[] options;
+    private List<String> options;
 
     /**
      * Constructor for a Setting object
@@ -14,11 +17,11 @@ public class Setting{
      * @param value Default value for the setting
      * @param options The possible values of the setting
      */
-    public Setting(String name, String description, String value, String[] options){
+    public Setting(String name, String description, String value, List<String> options){
         this.name = name;
         this.description = description;
         this.value = value;
-        this.options = options;
+        this.options = new ArrayList<>(options);
     }
 
     public String getName(){
@@ -33,7 +36,7 @@ public class Setting{
         return value;
     }
 
-    public String[] getOptions(){
+    public List<String> getOptions(){
         return options;
     }
 

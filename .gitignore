@@ -9,6 +9,7 @@ src/test/*
 target/*
 pom.xml
 *.xml
+*.bat
 
 # Ignore log files
 *.txt

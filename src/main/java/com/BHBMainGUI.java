@@ -43,7 +43,7 @@ public class BHBMainGUI extends Application {
     //======================================================
 
     //Global current version indicator
-    private static final String CURRENT_VERSION = "1.4.9"; // Next is 1.5.1
+    private static final String CURRENT_VERSION = "1.5.1";
     //Gets the latest version number from the git repo
     private static final String LATEST_VERSION = getTagFromGitJson("tag_name");
 
@@ -96,13 +96,13 @@ public class BHBMainGUI extends Application {
 
     //BHB
     private VBox mainBHBBox = new VBox();   
-    private Button[] upButtons = new Button[6];
+    private List<Button> upButtons = new ArrayList<>(6);
     private Button copyButtonBHB = new Button();
     private Button clearAllCodes = new Button("Clear All");
     private Button copyToFirstEmpty = new Button("<<<");
 
     private LimitedTextField lastEnteredField;
-    private LimitedTextField[] codeFields = new LimitedTextField[6];
+    private List<LimitedTextField> codeFields = new ArrayList<>(6);
     private LimitedTextField enterNicknameBHB = new LimitedTextField(false, "[A-Za-z0-9_\\[\\]]", -1);
 
     private HBox previewLabelsBHBBox = new HBox();
@@ -110,7 +110,7 @@ public class BHBMainGUI extends Application {
     private HBox pickerAndCopyButtonBox = new HBox();
     private HBox nickInputBox = new HBox(new Label("Enter text: "), enterNicknameBHB);
 
-    private Label[] previewColorLabels = new Label[6];
+    private List<Label> previewColorLabels = new ArrayList<>(6);
     
     // Each individual menu item for the submenus - any var ending in ..item is a MenuItem, these are all theoretically global,
     // however not all are used in both modes
@@ -136,19 +136,19 @@ public class BHBMainGUI extends Application {
     //Settings
     private BorderPane settingsPane = new BorderPane();
     private Setting justificationPriority = new Setting("Justification Priority", "When a string cannot evenly be split, there will need to be longer strings on one side.\nThis setting changes which side gets longer strings.", 
-    "Left", new String[]{"Left", "Right"}){
+    "Left", Arrays.asList("Left", "Right")){
         @Override
         public void execute(){
             renderOnHook = true;
         }   
     };
-    private Setting darkMode = new Setting("Dark Mode", "Enable dark mode for the GUI.", "Off", new String[]{"Off", "On"}){
+    private Setting darkMode = new Setting("Dark Mode", "Enable dark mode for the GUI.", "Off", Arrays.asList("Off", "On")){
         @Override
         public void execute(){
             changeTheme(mainScene, previewColorLabels);
         }
     };
-    private Setting expandCS2 = new Setting("De-limit Inputs", "Allow use of all characters in the ColorScheme 2 and BHB input fields.", "Off", new String[]{"Off", "On"}){
+    private Setting expandCS2 = new Setting("De-limit Inputs", "Allow use of all characters in the ColorScheme 2 and BHB input fields.", "Off", Arrays.asList("Off", "On")){
         @Override
         public void execute(){
             enterNicknameColorscheme.setRestrict(this.getValue().equals("Off") ? "[A-Za-z0-9_\\[\\] ]" : ".");
@@ -179,6 +179,7 @@ public class BHBMainGUI extends Application {
     @Override
     public void start(Stage stage) throws Exception {
 
+        //Initialize the logger
         initLogger();
 
         //Create the pane scene for BHB
@@ -261,7 +262,6 @@ public class BHBMainGUI extends Application {
     private void buildSettingsBox(){
         settingsPane.getChildren().clear();
 
-
         ImageView exitSettingsIcon = new ImageView(new Image(getClass().getClassLoader().getResource("exit.png").toString()));
         exitSettingsIcon.setFitWidth(30);
         exitSettingsIcon.setFitHeight(30);
@@ -307,8 +307,8 @@ public class BHBMainGUI extends Application {
         newBox.setMinHeight(30);
 
         Label settingName = new Label(setting.getName() + ":");
-        RadioButton rb1 = new RadioButton(setting.getOptions()[0]);
-        RadioButton rb2 = new RadioButton(setting.getOptions()[1]);  
+        RadioButton rb1 = new RadioButton(setting.getOptions().get(0));
+        RadioButton rb2 = new RadioButton(setting.getOptions().get(1));  
 
         rb1.setOnAction(e -> {
             if(rb1.isSelected()) {
@@ -326,7 +326,7 @@ public class BHBMainGUI extends Application {
             setting.execute();
         });
 
-        if(setting.getValue().equals(setting.getOptions()[0])) rb1.setSelected(true);
+        if(setting.getValue().equals(setting.getOptions().get(0))) rb1.setSelected(true);
         else rb2.setSelected(true);
 
         newBox.getChildren().addAll(settingName, rb1, rb2);
@@ -418,27 +418,25 @@ public class BHBMainGUI extends Application {
         copyToFirstEmpty.setFont(Font.font("Arial", FontWeight.SEMI_BOLD, 14));
         copyToFirstEmpty.setOnAction( e -> {
 
-            int findMe = 0;
-            for(int i = 0; i < 6; ++i, ++findMe) if (codeFields[i].equals(lastEnteredField)) break;
+            int findMe = codeFields.indexOf(lastEnteredField);
 
             if(lastEnteredField != null && !lastEnteredField.isDisabled()){
 
-                oldColorQueue.offerFirst(codeFields[findMe].getText());
+                oldColorQueue.offerFirst(codeFields.get(findMe).getText());
                 referencedFieldsQueue.offerFirst(findMe);
                 updateUndoButton();
 
                 lastEnteredField.setText(colorPickerUI.getValue().toString().substring(2,8).toUpperCase());
-                if(findMe + 1 < 6) lastEnteredField = codeFields[findMe + 1];
+                if(findMe + 1 < 6) lastEnteredField = codeFields.get(findMe + 1);
             }
             else{
-                for(int i = 0; i < 6; i++){
-                    if(!isHexOk(codeFields[i].getText())){
-
-                        oldColorQueue.offerFirst(codeFields[i].getText());
-                        referencedFieldsQueue.offerFirst(i);
+                for(LimitedTextField lt : codeFields){
+                    if(!isHexOk(lt.getText())){
+                        oldColorQueue.offerFirst(lt.getText());
+                        referencedFieldsQueue.offerFirst(codeFields.indexOf(lt));
                         updateUndoButton();
 
-                        codeFields[i].setText(colorPickerUI.getValue().toString().substring(2,8).toUpperCase());
+                        lt.setText(colorPickerUI.getValue().toString().substring(2,8).toUpperCase());
                         break;
                     }
                 }
@@ -448,15 +446,14 @@ public class BHBMainGUI extends Application {
         });
 
         clearAllCodes.setOnAction(e -> {
-            for(int i = 0; i < 6; ++i) {
-                referencedFieldsQueue.offerFirst(i);
-                oldColorQueue.offerFirst(codeFields[i].getText());
-                lastActionClearAll = true;
-
-                codeFields[i].clear();
+            for(LimitedTextField lt : codeFields){
+                referencedFieldsQueue.offerFirst(codeFields.indexOf(lt));
+                oldColorQueue.offerFirst(lt.getText());
+                lt.clear();
             }
+            lastActionClearAll = true;
             updateUndoButton();
-            codeFields[0].requestFocus();
+            codeFields.get(0).requestFocus();
         });
         clearAllCodes.setTooltip(new Tooltip("Clear code fields"));
 
@@ -575,7 +572,7 @@ public class BHBMainGUI extends Application {
             updateTextFieldFontSize(colorCodeEnterField);
         });
 
-        codeFields[id - 1] = colorCodeEnterField;
+        codeFields.add((id - 1), colorCodeEnterField);
         logStatic(Level.INFO, "Created enterCodeField with id: " + Integer.toString(id), null);
         return colorCodeEnterField;
     }
@@ -584,8 +581,8 @@ public class BHBMainGUI extends Application {
     private HBox makeCodeBox(int id){
         Label codeId = new Label("Code " + id + ": ");
         Label codeColorLabel = new CodeColorLabel();
-        previewColorLabels[id - 1] = codeColorLabel;
-        previewColorLabels[id - 1].setTooltip(new Tooltip("Clear code"));
+        previewColorLabels.add((id - 1), codeColorLabel);
+        previewColorLabels.get(id - 1).setTooltip(new Tooltip("Clear code"));
         LimitedTextField codeField = makeCodeEnterField(codeColorLabel, id);
 
         codeColorLabel.setOnMouseClicked(e -> {
@@ -602,14 +599,12 @@ public class BHBMainGUI extends Application {
         upButton.setOnAction(e -> {
             if(id - 1 > 0 && isHexOk(codeField.getText())){
                 String currentText = codeField.getText();
-                String newText = codeFields[id - 2].getText();
-
-                codeField.setText(newText);
-                codeFields[id - 2].setText(currentText);
+                codeField.setText(codeFields.get(id - 2).getText());
+                codeFields.get(id - 2).setText(currentText);
             }
         });
         if(id == 1) upButton.setDisable(true);
-        upButtons[(id - 1)] = upButton;
+        upButtons.add((id - 1), upButton);
 
         HBox codeBox = new HBox(codeId, codeField, upButton, codeColorLabel);
         codeBox.setAlignment(Pos.CENTER);
@@ -764,8 +759,8 @@ public class BHBMainGUI extends Application {
     //Unlocks or locks field inside of BHB dependent on if text is entered or not
     private void unlockFields(){
         for(int i = 0; i < 6; i++){
-            if(codeFields[i].getText() != null && codeFields[i].getText().length() == 6 && !codeFields[i].isDisable() && i + 1 < 6 && isHexOk(codeFields[i].getText())) codeFields[i + 1].setDisable(false);
-            else if (i + 1 < 6) codeFields[i + 1].setDisable(true);
+            if(codeFields.get(i).getText() != null && codeFields.get(i).getText().length() == 6 && !codeFields.get(i).isDisable() && i + 1 < 6 && isHexOk(codeFields.get(i).getText())) codeFields.get(i + 1).setDisable(false);
+            else if (i + 1 < 6) codeFields.get(i + 1).setDisable(true);
         }
     }
 
@@ -785,13 +780,13 @@ public class BHBMainGUI extends Application {
 
         //Need to be at least 2 codes
         int validCodes = 0;
-        for(int i = 0; i <= 5; i++) if(!codeFields[i].isDisabled() && isHexOk(codeFields[i].getText())) validCodes++;
+        for(int i = 0; i <= 5; i++) if(!codeFields.get(i).isDisabled() && isHexOk(codeFields.get(i).getText())) validCodes++;
         if (userInputLength >=3 && validCodes >= 2 && (userInputLength >= ((validCodes * 2) - 1))){
-            String[] codeArray = new String[validCodes];
-            for(int i = 0; i < validCodes; i++) codeArray[i] = codeFields[i].getText();
+            List<String> codeList = new ArrayList<>(validCodes);
+            for(int i = 0; i < validCodes; i++) codeList.add(i, codeFields.get(i).getText());
 
             previewLabelsBHBBox.setPrefHeight(defaultPreviewHeight);
-            currentNickBHB = Blend.blendMain(validCodes, enterNicknameBHB.getText(), codeArray, justificationPriority.getValue().equals("Right"));
+            currentNickBHB = Blend.blendMain(validCodes, enterNicknameBHB.getText(), codeList, justificationPriority.getValue().equals("Right"));
             parseNickToLabel(currentNickBHB, previewLabelsBHBBox, selectedScheme, true);
             return;        
         }
@@ -813,19 +808,19 @@ public class BHBMainGUI extends Application {
         selectedScheme = schemes.getValue();
 
         //Gets the codes that correspond to the scheme
-        String[] schemeCodes = selectedScheme.getScheme();
+        List<String> schemeCodes = selectedScheme.getScheme();
 
         int counter = 0;
         //Fills the codearray with the codes
         for(int i = 0; i < userInputLength; ++i, ++counter){
             //Next char to be added
             if(enterNicknameColorscheme.getText().charAt(i) == ' ') counter --;
-            if(counter >= schemeCodes.length) counter = 0;
+            if(counter >= schemeCodes.size()) counter = 0;
             if(selectedScheme.toString().equals("Random Hex")){
-                nickBuilder.append("&#" + schemeCodes[counter] + enterNicknameColorscheme.getText().charAt(i));
+                nickBuilder.append("&#" + schemeCodes.get(counter) + enterNicknameColorscheme.getText().charAt(i));
             }
             else{
-                nickBuilder.append("&" + schemeCodes[counter] + enterNicknameColorscheme.getText().charAt(i));
+                nickBuilder.append("&" + schemeCodes.get(counter) + enterNicknameColorscheme.getText().charAt(i));
             }         
         }
         currentNickColorScheme = nickBuilder.toString();
@@ -836,19 +831,17 @@ public class BHBMainGUI extends Application {
     }
 
     //Bool swapping between light & dark
-    private void changeTheme(Scene mainScene, Label[] labelColorPreviews){
+    private void changeTheme(Scene mainScene, List<Label> labelColorPreviews){
         if(currentTheme.equals("LIGHT")) goDark(mainScene,labelColorPreviews);
         else goLight(mainScene, labelColorPreviews);
     }
 
     //Dark mode
-    private void goDark(Scene mainScene, Label[] labelColorPreviews){
+    private void goDark(Scene mainScene, List<Label> labelColorPreviews){
         for(Button b : upButtons) b.setTextFill(Color.WHITE);
         mainScene.getStylesheets().add(getClass().getClassLoader().getResource("dark.css").toString());
-        for(int i = 0; i <= 5; ++i){
-            if(codeFields[i].getText().equals("")){
-                labelColorPreviews[i].setBackground(new Background(new BackgroundFill(Color.rgb(92, 100, 108), CornerRadii.EMPTY, Insets.EMPTY)));
-            }
+        for(LimitedTextField lt : codeFields){
+            if(lt.getText().equals("")) labelColorPreviews.get(codeFields.indexOf(lt)).setBackground(new Background(new BackgroundFill(Color.rgb(92, 100, 108), CornerRadii.EMPTY, Insets.EMPTY)));
         }
         currentTheme = "DARK";
         copyButtonBHB.setGraphic(new CopyButtonIcon(false));
@@ -856,17 +849,18 @@ public class BHBMainGUI extends Application {
     }
 
     //Light mode
-    private void goLight(Scene mainScene, Label[] labelColorPreviews){
+    private void goLight(Scene mainScene, List<Label> labelColorPreviews){
         for(Button b : upButtons) b.setTextFill(Color.BLACK);
         mainScene.getStylesheets().remove(getClass().getClassLoader().getResource("dark.css").toString());
-        for(int i = 0; i <=5; i++){
-            if(codeFields[i].getText().equals("")){
-                labelColorPreviews[i].setBackground(new Background(new BackgroundFill(Color.rgb(
+        for(LimitedTextField lt : codeFields){
+            if(lt.getText().equals("")){
+                labelColorPreviews.get(codeFields.indexOf(lt)).setBackground(new Background(new BackgroundFill(Color.rgb(
                     Integer.parseInt("F2",16),
                     Integer.parseInt("F2",16),
                     Integer.parseInt("F2",16)), CornerRadii.EMPTY, Insets.EMPTY)));
             }
         }
+
         currentTheme = "LIGHT";
         copyButtonBHB.setGraphic(new CopyButtonIcon(true));
         copyButtonColorscheme.setGraphic(new CopyButtonIcon(true));
@@ -892,8 +886,8 @@ public class BHBMainGUI extends Application {
         //If the last action was a clear all, undo all 6 clears, else, undo 1
         for(int i = 0; i < (lastActionClearAll ? 6 : 1); i++){
             Integer codeFieldsID = referencedFieldsQueue.removeFirst();
-            codeFields[codeFieldsID].setText(oldColorQueue.removeFirst());
-            codeFields[codeFieldsID].requestFocus();
+            codeFields.get(codeFieldsID).setText(oldColorQueue.removeFirst());
+            codeFields.get(codeFieldsID).requestFocus();
         }
         lastActionClearAll = false;
         updateUndoButton();
@@ -902,8 +896,8 @@ public class BHBMainGUI extends Application {
     //Create preview label coundaries based on a formatted nick
     private static void parseNickToLabel(String nick, HBox previewLabels, Scheme selectedScheme, boolean isBhb){
         previewLabels.getChildren().clear();
-        String[] comp = nick.split("&#");
-        if(isBhb || selectedScheme.toString().equals("Random Hex")) for(int i = 1; i < comp.length; i++) previewLabels.getChildren().add(new PreviewLabel(comp[i].charAt(6), comp[i].substring(0,6), (comp.length - 1)));
+        List<String> comp = Arrays.asList(nick.split("&#"));
+        if(isBhb || selectedScheme.toString().equals("Random Hex")) for(int i = 1; i < comp.size(); i++) previewLabels.getChildren().add(new PreviewLabel(comp.get(i).charAt(6), comp.get(i).substring(0,6), (comp.size() - 1)));
         else for(int i = 1; i < nick.split("&").length; i++) previewLabels.getChildren().add(new PreviewLabel(nick.split("&")[i].charAt(1), Character.toString(nick.split("&")[i].charAt(0)), (nick.split("&").length - 1)));
     }
 
@@ -912,23 +906,23 @@ public class BHBMainGUI extends Application {
 
         //Create random colors
         Random random = new Random(new Random().nextInt(Integer.MAX_VALUE));
-        String[] randomArray = new String[32];
-        for(int i = 0; i < 32; ++i) randomArray[i] = Character.toString("0123456789abcdef".charAt(random.nextInt(15)));
+        List<String> randomList = new ArrayList<>(32);
+        for(int i = 0; i < 32; ++i) randomList.add(Character.toString("0123456789abcdef".charAt(random.nextInt(15))));
 
         //Create the scheme
-        if(loadedSchemes.get(0) == null) loadedSchemes.set(0, new Scheme("Random", randomArray));
-        else loadedSchemes.get(0).setScheme(randomArray);
+        if(loadedSchemes.get(0) == null) loadedSchemes.set(0, new Scheme("Random", randomList));
+        else loadedSchemes.get(0).setScheme(randomList);
     }
 
     //Allows for new generation mid program
     private void generateNewRandomHexScheme(){
         
-        String[] randomHexArray = new String[32];
-        for(int i = 0; i < 32; ++i) randomHexArray[i] = new RandomHexGenerator().generate();
+        List<String> randomHexList = new ArrayList<>(32);
+        for(int i = 0; i < 32; ++i) randomHexList.add(new RandomHexGenerator().generate());
 
         //Create the scheme
-        if(loadedSchemes.get(1) == null) loadedSchemes.set(1, new Scheme("Random Hex", randomHexArray));
-        else loadedSchemes.get(1).setScheme(randomHexArray);
+        if(loadedSchemes.get(1) == null) loadedSchemes.set(1, new Scheme("Random Hex", randomHexList));
+        else loadedSchemes.get(1).setScheme(randomHexList);
     }
 
     //======================================================
@@ -1044,7 +1038,7 @@ public class BHBMainGUI extends Application {
         //Open the dialog
         File configFile = configChooser.showOpenDialog(stage);
         if(configFile != null){
-            for(int i = 0; i < 6; i++) codeFields[i].setText("");
+            for(int i = 0; i < 6; i++) codeFields.get(i).setText("");
             try( FileReader fReader = new FileReader(configFile); //Basic reader, throws FileNotFoundException
             BufferedReader bReader = new BufferedReader(fReader);)
             { 
@@ -1053,7 +1047,7 @@ public class BHBMainGUI extends Application {
                     String line = bReader.readLine();
                     if(line != null){
                         if(isHexOk(line) || line.equals("")){
-                            codeFields[i].setText(line);
+                            codeFields.get(i).setText(line);
                         }
                         else {
                             //Error in file reading - invalid chars reached
@@ -1082,7 +1076,7 @@ public class BHBMainGUI extends Application {
     }
 
     //Intrusive loading technique, will disrupt the program's functionality temporarily
-    private void forceLoad(Scene mainScene, Label[] labelColorPreviews){
+    private void forceLoad(Scene mainScene, List<Label> labelColorPreviews){
 
         //Create a temporary reference to the file
         File tempStore = new File(System.getProperty("user.dir") + "/tempstore.txt");
@@ -1104,7 +1098,7 @@ public class BHBMainGUI extends Application {
             String[] codes = new String[6];
             //Read the codes
             for(int i = 0; i < 6; i++) if((line = bReader.readLine()) != null && isHexOk(line)) codes[i] = line;
-            for(int i = 0; i < 6; i++) if(codes[i] != null) codeFields[i].setText(codes[i]);
+            for(int i = 0; i < 6; i++) if(codes[i] != null) codeFields.get(i).setText(codes[i]);
             enterNicknameBHB.setText(bReader.readLine().replace("\n", ""));
 
             //Set theme based on config
@@ -1131,7 +1125,7 @@ public class BHBMainGUI extends Application {
     private void saveCodes(){
 
         int goodCodes = 0;
-        for(int i = 0; i < 6; i++) if(isHexOk(codeFields[i].getText())) goodCodes++;
+        for(int i = 0; i < 6; i++) if(isHexOk(codeFields.get(i).getText())) goodCodes++;
 
         if(goodCodes >= 1){
             FileChooser configChooser = new FileChooser();
@@ -1144,14 +1138,14 @@ public class BHBMainGUI extends Application {
 
             if(saveFile != null){
 
-                String[] codes = new String[6];
-                for(int i = 0; i < 6; i++) if(isHexOk(codeFields[i].getText())) codes[i] = codeFields[i].getText();
+                List<String> codes = new ArrayList<>(6);
+                for(LimitedTextField lt : codeFields) if(isHexOk(lt.getText())) codes.add(lt.getText());
 
                 try( FileWriter fWriter = new FileWriter(saveFile); //Basic reader, throws FileNotFoundException
                 BufferedWriter bWriter = new BufferedWriter(fWriter);)
                 { 
                     for(int i = 0; i < 6; i++){
-                        bWriter.write(codes[i]);
+                        bWriter.write(codes.get(i));
                         if(i != 5) bWriter.newLine();
                     }
                 }
@@ -1175,7 +1169,7 @@ public class BHBMainGUI extends Application {
         if(!alreadySaved){
             File tempStore = new File(System.getProperty("user.dir") + "/tempstore.txt");
             String[] codes = new String[6];
-            for(int i = 0; i < 6; i++) codes[i] = codeFields[i].getText();
+            for(int i = 0; i < 6; i++) codes[i] = codeFields.get(i).getText();
             try( FileWriter fWriter = new FileWriter(tempStore); //Basic reader, throws FileNotFoundException
             BufferedWriter bWriter = new BufferedWriter(fWriter);)
             {
@@ -1242,8 +1236,8 @@ public class BHBMainGUI extends Application {
             Arrays.asList(
                 null, //Reserved for random
                 null, //Reserved for random hex
-                new Scheme("Rainbow", "4c6eab9d5".split("")), //Rainbow
-                new Scheme("Ordered", "0123456789abcdef".split("")) //Ordered
+                new Scheme("Rainbow", Arrays.asList("4c6eab9d5".split(""))), //Rainbow
+                new Scheme("Ordered", Arrays.asList("0123456789abcdef".split(""))) //Ordered
             ) 
         );
 
