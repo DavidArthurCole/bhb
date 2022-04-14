@@ -1,9 +1,16 @@
+# Ignore vscode settings
 .vscode/*
-target/*
-src/test/*
-pom.xml
-*.xml
-tempstore.txt
 .classpath
 .project
 .settings/*
+
+# Ignore test compilation files
+src/test/*
+target/*
+pom.xml
+*.xml
+
+# Ignore log files
+*.txt
+*.txt.1
+*.txt.1.lck
