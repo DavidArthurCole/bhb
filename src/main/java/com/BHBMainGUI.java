@@ -207,14 +207,7 @@ public class BHBMainGUI extends Application {
 
         //Check for updates when the program launches
         new Thread(() -> Platform.runLater(() -> {
-            try{
-                Thread.sleep(2500);
-                if(checkForUpdates()) startSelfUpdate();
-            }
-            catch(InterruptedException ex){
-                Thread.currentThread().interrupt();
-                logStatic(Level.SEVERE, "Exception in hook \"check for updates on startup\"; Stacktrace: " + ex.getStackTrace(), ex);
-            }
+            if(checkForUpdates()) startSelfUpdate();
         })).start();
     }
 
