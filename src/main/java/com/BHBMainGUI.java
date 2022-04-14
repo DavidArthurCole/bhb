@@ -5,6 +5,7 @@ package com;
 //======================================================
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.geometry.*;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -202,6 +203,18 @@ public class BHBMainGUI extends Application {
         updateUndoButton();
 
         updater = new Updater(LATEST_VERSION);
+
+        //Check for updates when the program launches
+        new Thread(() -> Platform.runLater(() -> {
+            try{
+                Thread.sleep(2500);
+                if(checkForUpdates()) startSelfUpdate();
+            }
+            catch(InterruptedException ex){
+                Thread.currentThread().interrupt();
+                logStatic(Level.SEVERE, "Exception in hook \"check for updates on startup\"; Stacktrace: " + ex.getStackTrace(), ex);
+            }
+        })).start();
     }
 
     //======================================================
@@ -363,7 +376,7 @@ public class BHBMainGUI extends Application {
 
         updateCheckerItem.setOnAction(e -> {
             
-            if(compareVersions(CURRENT_VERSION, LATEST_VERSION) == -1) startSelfUpdate();
+            if(checkForUpdates()) startSelfUpdate();
             else{
                 new BHBAlert(AlertType.INFORMATION, "BHB is up to date, (version " + CURRENT_VERSION + ")",
                 "No updates found", "Up to date").showAndWait();
@@ -921,6 +934,10 @@ public class BHBMainGUI extends Application {
     //======================================================
     //|                 UPDATERS                           |
     //======================================================
+
+    private boolean checkForUpdates(){
+        return (compareVersions(CURRENT_VERSION, LATEST_VERSION) == -1);
+    }
 
     private void startSelfUpdate(){
 
