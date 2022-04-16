@@ -4,7 +4,7 @@ import java.util.Random;
 
 public class RandomHexGenerator {
     
-    Random random;
+    private Random random;
 
     public RandomHexGenerator(){
         this.random = new Random(new Random().nextInt(Integer.MAX_VALUE));

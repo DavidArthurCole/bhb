@@ -6,6 +6,10 @@ package com;
 
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.beans.property.Property;
+import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.*;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -43,120 +47,126 @@ public class BHBMainGUI extends Application {
     //======================================================
 
     //Global current version indicator
-    private static final String CURRENT_VERSION = "1.5.1";
+    private static final Property<String> CURRENT_VERSION = new SimpleStringProperty("1.5.1"){
+        @Override
+        public String toString(){ return this.getValue();}
+    };
     //Gets the latest version number from the git repo
-    private static final String LATEST_VERSION = getTagFromGitJson("tag_name");
+    private static final Property<String> LATEST_VERSION = new SimpleStringProperty(getTagFromGitJson("tag_name")){
+        @Override
+        public String toString(){ return this.getValue();}
+    };
 
     //Enable verbose logging
-    private static boolean verboseLogging = false;
+    private static final Property<Boolean> verboseLogging = new SimpleBooleanProperty(false);
     //Count logged items
-    private static int loggedItems = 0;
+    private static final Property<Number> loggedItems = new SimpleIntegerProperty(0);
     //Init log file
-    private File logFile = new File("log.txt");
+    private final File logFile = new File("log.txt");
     
     //Global updater object
-    private Updater updater; 
+    private final Updater updater = new Updater(LATEST_VERSION.getValue());
     //Default theme is light
-    private String currentTheme = "LIGHT";
+    private final Property<String> currentTheme = new SimpleStringProperty("LIGHT");
     //Stores the current nick for BHB
-    private String currentNickBHB;
+    private final Property<String> currentNickBHB = new SimpleStringProperty();
     //Stores the current nick for Colorscheme
-    private String currentNickColorScheme;
-    //Stores the default preferred height for previewLabelsBHB
-    private static double defaultPreviewHeight;
+    private final Property<String> currentNickColorScheme = new SimpleStringProperty();
     //Creates a logger for debug
-    private Logger log = Logger.getLogger(BHBMainGUI.class.getSimpleName());
+    private final Logger log = Logger.getLogger(BHBMainGUI.class.getSimpleName());
     //Prevents threading errors in some cases
-    private boolean alreadySaved = false;
+    private final Property<Boolean> alreadySaved = new SimpleBooleanProperty(false);
     //Passed around for use in different UI elements in colorscheme
     private Scheme selectedScheme;
     //Store values when sending colors around
-    private Deque<String> oldColorQueue = new ArrayDeque<>();
-    private Deque<Integer> referencedFieldsQueue = new ArrayDeque<>();
-    private boolean lastActionClearAll = false;
+    private final Deque<String> oldColorQueue = new ArrayDeque<>();
+    private final Deque<Integer> referencedFieldsQueue = new ArrayDeque<>();
+    private final Property<Boolean> lastActionClearAll = new SimpleBooleanProperty(false);
     //Definition for ctrl z shortcut
-    private KeyCodeCombination ctrlZ = new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_ANY);
+    private final KeyCodeCombination ctrlZ = new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_ANY);
 
     //For global access, changing disabling/editing between scenes
-    private BorderPane rootPane = new BorderPane();
-    private MenuItem switchStagesItem = new MenuItem("Switch to Colorscheme V2");
-    private MenuBar menuBar = new MenuBar();
-    private MenuItem saveItem = new MenuItem("Save");
-    private MenuItem undoItem = new MenuItem("Undo");
-    private MenuItem loadItem = new MenuItem("Load");
+    private final BorderPane rootPane = new BorderPane();
+    private final MenuItem switchStagesItem = new MenuItem("Switch to Colorscheme V2");
+    private final MenuBar menuBar = new MenuBar();
+    private final MenuItem saveItem = new MenuItem("Save");
+    private final MenuItem undoItem = new MenuItem("Undo");
+    private final MenuItem loadItem = new MenuItem("Load");
     private Scene mainScene;
 
     //Colorscheme 
-    private BorderPane mainColorschemeBox = new BorderPane();
-    private Button copyButtonColorscheme = new Button();
-    private HBox previewLabelsColorscheme = new HBox();
-    private ComboBox<Scheme> schemes = new ComboBox<>();
-    private LimitedTextField enterNicknameColorscheme = new LimitedTextField(false, "[A-Za-z0-9_\\[\\] ]", -1);
+    private final BorderPane mainColorschemeBox = new BorderPane();
+    private final Button copyButtonColorscheme = new Button("", new CopyButtonIcon(true));
+    private final HBox previewLabelsColorscheme = new HBox();
+    private final ComboBox<Scheme> schemes = new ComboBox<>();
+    private final LimitedTextField enterNicknameColorscheme = new LimitedTextField(false, "[A-Za-z0-9_\\[\\] ]", -1);
     private ArrayList<Scheme> loadedSchemes = new ArrayList<>();
 
     //BHB
-    private VBox mainBHBBox = new VBox();   
-    private List<Button> upButtons = new ArrayList<>(6);
-    private Button copyButtonBHB = new Button();
-    private Button clearAllCodes = new Button("Clear All");
-    private Button copyToFirstEmpty = new Button("<<<");
+    private final VBox mainBHBBox = new VBox();   
+    private final List<Button> upButtons = new ArrayList<>(6);
+    private final Button copyButtonBHB = new Button("", new CopyButtonIcon(true));
+    private final Button clearAllCodes = new Button("Clear All");
+    private final Button copyToFirstEmpty = new Button("<<<");
 
     private LimitedTextField lastEnteredField;
-    private List<LimitedTextField> codeFields = new ArrayList<>(6);
-    private LimitedTextField enterNicknameBHB = new LimitedTextField(false, "[A-Za-z0-9_\\[\\]]", -1);
+    private final List<LimitedTextField> codeFields = new ArrayList<>(6);
+    private final LimitedTextField enterNicknameBHB = new LimitedTextField(false, "[A-Za-z0-9_\\[\\]]", -1);
 
-    private HBox previewLabelsBHBBox = new HBox();
-    private HBox codesAndPickerBox = new HBox();
-    private HBox pickerAndCopyButtonBox = new HBox();
-    private HBox nickInputBox = new HBox(new Label("Enter text: "), enterNicknameBHB);
+    private final HBox previewLabelsBHBBox = new HBox();
+    private final HBox codesAndPickerBox = new HBox();
+    private final HBox pickerAndCopyButtonBox = new HBox();
+    private final HBox nickInputBox = new HBox(new Label("Enter text: "), enterNicknameBHB);
 
-    private List<Label> previewColorLabels = new ArrayList<>(6);
+    private final List<Label> previewColorLabels = new ArrayList<>(6);
     
     // Each individual menu item for the submenus - any var ending in ..item is a MenuItem, these are all theoretically global,
     // however not all are used in both modes
-    private MenuItem slotMachineColorsItem = new MenuItem("Slot Machine (Seizure Warning)");
-    private MenuItem settingsItem = new MenuItem("Settings");
-    private MenuItem updateCheckerItem = new MenuItem("Check For Updates");
-    private MenuItem aboutItem = new MenuItem("About");
-    private MenuItem gitHubItem = new MenuItem("Visit the GitHub page");
+    private final MenuItem slotMachineColorsItem = new MenuItem("Slot Machine (Seizure Warning)");
+    private final MenuItem settingsItem = new MenuItem("Settings");
+    private final MenuItem updateCheckerItem = new MenuItem("Check For Updates");
+    private final MenuItem aboutItem = new MenuItem("About");
+    private final MenuItem gitHubItem = new MenuItem("Visit the GitHub page");
 
     //Sub menus displayed in the MenuBar
-    private Menu menuEdit = new Menu("Edit");
-    private Menu menuTools = new Menu("Tools");
-    private Menu menuHelp = new Menu("Help");
-    private Menu menuFile = new Menu("File");
+    private final Menu menuEdit = new Menu("Edit");
+    private final Menu menuTools = new Menu("Tools");
+    private final Menu menuHelp = new Menu("Help");
+    private final Menu menuFile = new Menu("File");
      
-    private VBox codesBox = new VBox(makeCodeBox(1), makeCodeBox(2), makeCodeBox(3), makeCodeBox(4), makeCodeBox(5), makeCodeBox(6), clearAllCodes);
-    private VBox colorPickerBox = new VBox();
+    private final VBox codesBox = new VBox(makeCodeBox(1), makeCodeBox(2), makeCodeBox(3), makeCodeBox(4), makeCodeBox(5), makeCodeBox(6), clearAllCodes);
+    private final VBox colorPickerBox = new VBox();
 
-    private Circle colorCircle = new Circle();
-    private ColorPicker colorPickerUI = new ColorPicker(Color.BLACK);
-    private BorderPane previewCopyPane = new BorderPane();
+    private final Circle colorCircle = new Circle();
+    private final ColorPicker colorPickerUI = new ColorPicker(Color.BLACK);
+    private final BorderPane previewCopyPane = new BorderPane();
+
+    //Controls whether or not to re-render the preview labels on the next render of the BHB GUI
+    //This is used when the justification priority is changed
+    private final Property<Boolean> renderOnHook = new SimpleBooleanProperty(false);
 
     //Settings
-    private BorderPane settingsPane = new BorderPane();
-    private Setting justificationPriority = new Setting("Justification Priority", "When a string cannot evenly be split, there will need to be longer strings on one side.\nThis setting changes which side gets longer strings.", 
+    private final BorderPane settingsPane = new BorderPane();
+    private final Setting justificationPriority = new Setting("Justification Priority", "When a string cannot evenly be split, there will need to be longer strings on one side.\nThis setting changes which side gets longer strings.", 
     "Left", Arrays.asList("Left", "Right")){
         @Override
         public void execute(){
-            renderOnHook = true;
+            renderOnHook.setValue(true);
         }   
     };
-    private Setting darkMode = new Setting("Dark Mode", "Enable dark mode for the GUI.", "Off", Arrays.asList("Off", "On")){
+    private final Setting darkMode = new Setting("Dark Mode", "Enable dark mode for the GUI.", "Off", Arrays.asList("Off", "On")){
         @Override
         public void execute(){
             changeTheme(mainScene, previewColorLabels);
         }
     };
-    private Setting expandCS2 = new Setting("De-limit Inputs", "Allow use of all characters in the ColorScheme 2 and BHB input fields.", "Off", Arrays.asList("Off", "On")){
+    private final Setting expandCS2 = new Setting("De-limit Inputs", "Allow use of all characters in the ColorScheme 2 and BHB input fields.", "Off", Arrays.asList("Off", "On")){
         @Override
         public void execute(){
             enterNicknameColorscheme.setRestrict(this.getValue().equals("Off") ? "[A-Za-z0-9_\\[\\] ]" : ".");
             enterNicknameBHB.setRestrict(this.getValue().equals("Off") ? "[A-Za-z0-9_\\[\\] ]" : ".");
         }
     };
-
-    private boolean renderOnHook = false;
     
     //======================================================
     //|                 MAIN METHODS                       |
@@ -169,7 +179,7 @@ public class BHBMainGUI extends Application {
         if(args.length >=1 && args[0] != null) killOldLinuxProcess(args);
 
         //Catch flag for verbose logging mode
-        if(args.length >=2 && args[1] != null && args[1].equalsIgnoreCase("-v")) verboseLogging = true;
+        if(args.length >=2 && args[1] != null && args[1].equalsIgnoreCase("-v")) verboseLogging.setValue(true);
 
         //Start the application
         launch();    
@@ -203,8 +213,6 @@ public class BHBMainGUI extends Application {
 
         updateUndoButton();
 
-        updater = new Updater(LATEST_VERSION);
-
         //Check for updates when the program launches
         new Thread(() -> Platform.runLater(() -> {
             if(checkForUpdates()) startSelfUpdate();
@@ -237,7 +245,7 @@ public class BHBMainGUI extends Application {
                 logStatic(Level.SEVERE, "Exception in hook \"delete log file\"; Stacktrace: " + ex.getStackTrace(), ex);
             }
             //If no items are logged, delete the file - will not trigger in verbose mode
-            if(loggedItems < 1 && !verboseLogging) logFile.delete();
+            if(loggedItems.getValue().intValue() < 1 && !Boolean.TRUE.equals(verboseLogging.getValue())) logFile.delete();
         }));
 
         //Delete old update files that exist
@@ -359,7 +367,7 @@ public class BHBMainGUI extends Application {
 
         aboutItem.setOnAction(e -> {
             String publishDate = getTagFromGitJson("published_at");
-            String releaseDate = compareVersions(CURRENT_VERSION, LATEST_VERSION) == -1 ? 
+            String releaseDate = compareVersions(CURRENT_VERSION.getValue(), LATEST_VERSION.getValue()) == -1 ? 
                 "Release date unknown" : "Release date: " + publishDate.substring(0, publishDate.length() - 1).replace("T", " ").split(" ")[0];
 
             new BHBAlert(AlertType.INFORMATION, releaseDate, "About BHB", "Version: " + CURRENT_VERSION).showAndWait();
@@ -403,7 +411,6 @@ public class BHBMainGUI extends Application {
      * @see Button
      */
     private void buildButtonsBHB(){
-        copyButtonBHB = new Button("", new CopyButtonIcon(true));
         copyButtonBHB.setTooltip(new Tooltip("Copy nickname to clipboard"));
         copyButtonBHB.setOnAction(e -> doClipboardCopy());
 
@@ -444,7 +451,7 @@ public class BHBMainGUI extends Application {
                 oldColorQueue.offerFirst(lt.getText());
                 lt.clear();
             }
-            lastActionClearAll = true;
+            lastActionClearAll.setValue(true);
             updateUndoButton();
             codeFields.get(0).requestFocus();
         });
@@ -551,7 +558,7 @@ public class BHBMainGUI extends Application {
                     Integer.parseInt(newValue.substring(4,6),16)), CornerRadii.EMPTY, Insets.EMPTY)));
             }
             else{
-                if(currentTheme.equals("DARK")) codeColorLabel.setBackground(new Background(new BackgroundFill(Color.rgb(92, 100, 108), CornerRadii.EMPTY, Insets.EMPTY)));
+                if(currentTheme.getValue().equals("DARK")) codeColorLabel.setBackground(new Background(new BackgroundFill(Color.rgb(92, 100, 108), CornerRadii.EMPTY, Insets.EMPTY)));
                 else{
                     codeColorLabel.setBackground(new Background(new BackgroundFill(Color.rgb(
                     Integer.parseInt("F2",16),
@@ -610,8 +617,6 @@ public class BHBMainGUI extends Application {
 
     //Builds components for colorscheme
     private void buildColorscheme(){
-        
-        copyButtonColorscheme = new Button("", new CopyButtonIcon(true));
         copyButtonColorscheme.setTooltip(new Tooltip("Copy nickname to clipboard"));
         copyButtonColorscheme.setOnAction(e -> doClipboardCopy());
 
@@ -649,11 +654,7 @@ public class BHBMainGUI extends Application {
         initSchemes();
         reloadSchemes();
 
-       
         Label previewLabel = new Label("Nickname preview:");
-    
-        previewLabelsColorscheme.setPrefHeight(defaultPreviewHeight);
-        previewLabelsColorscheme.setMinHeight(defaultPreviewHeight);
         previewLabelsColorscheme.setAlignment(Pos.CENTER);
 
         BorderPane nickPreview = new BorderPane();
@@ -661,7 +662,7 @@ public class BHBMainGUI extends Application {
         nickPreview.setTop(previewLabel);
         nickPreview.setCenter(previewLabelsColorscheme);
         nickPreview.setBottom(copyButtonColorscheme);
-        nickPreview.setMinHeight(defaultPreviewHeight + new Label("L").getHeight() + 10.0);
+        nickPreview.setMinHeight(new Label("L").getHeight() + 10.0);
         nickPreview.setPadding(new Insets(5));
         BorderPane.setAlignment(previewLabel, Pos.CENTER);
         BorderPane.setAlignment(copyButtonColorscheme, Pos.CENTER);
@@ -726,8 +727,8 @@ public class BHBMainGUI extends Application {
         else{
             if(oldCenter instanceof VBox){
                 //Handles rendering nickname labels after justification was changed L->R or R->L
-                if(renderOnHook){
-                    renderOnHook = false;
+                if(Boolean.TRUE.equals(renderOnHook.getValue())){
+                    renderOnHook.setValue(false);
                     updatePreviewBHB();
                 }
                 //Show the main box again
@@ -760,7 +761,7 @@ public class BHBMainGUI extends Application {
     //Update font size based on how much text there is
     private static void updateTextFieldFontSize(LimitedTextField field){
         if(field.getText() != null && field.getText().length() > 0){
-            int fontSize = 85 / field.getText().length();
+            int fontSize = (field.widthProperty().intValue()) / field.getText().length();
             if (fontSize > 12) fontSize = 14;
             field.setFont(new Font("Arial", fontSize));
         }    
@@ -778,20 +779,19 @@ public class BHBMainGUI extends Application {
             List<String> codeList = new ArrayList<>(validCodes);
             for(int i = 0; i < validCodes; i++) codeList.add(i, codeFields.get(i).getText());
 
-            previewLabelsBHBBox.setPrefHeight(defaultPreviewHeight);
-            currentNickBHB = Blend.blendMain(validCodes, enterNicknameBHB.getText(), codeList, justificationPriority.getValue().equals("Right"));
+            currentNickBHB.setValue(Blend.blendMain(validCodes, enterNicknameBHB.getText(), codeList, justificationPriority.getValue().equals("Right")));
             parseNickToLabel(currentNickBHB, previewLabelsBHBBox, selectedScheme, true);
             return;        
         }
         previewLabelsBHBBox.getChildren().clear();
         previewLabelsBHBBox.setPrefHeight(0);
-        currentNickBHB = "";
+        currentNickBHB.setValue("");
     }
 
     //Colorscheme version of ^
     public void updatePreviewColorscheme(){
 
-        currentNickColorScheme = "";
+        currentNickColorScheme.setValue("");
 
         StringBuilder nickBuilder = new StringBuilder();
 
@@ -816,16 +816,14 @@ public class BHBMainGUI extends Application {
                 nickBuilder.append("&" + schemeCodes.get(counter) + enterNicknameColorscheme.getText().charAt(i));
             }         
         }
-        currentNickColorScheme = nickBuilder.toString();
+        currentNickColorScheme.setValue(nickBuilder.toString());
 
         parseNickToLabel(currentNickColorScheme, previewLabelsColorscheme, selectedScheme, false);
-
-        previewLabelsColorscheme.setPrefHeight(defaultPreviewHeight);
     }
 
     //Bool swapping between light & dark
     private void changeTheme(Scene mainScene, List<Label> labelColorPreviews){
-        if(currentTheme.equals("LIGHT")) goDark(mainScene,labelColorPreviews);
+        if(currentTheme.getValue().equals("LIGHT")) goDark(mainScene,labelColorPreviews);
         else goLight(mainScene, labelColorPreviews);
     }
 
@@ -836,7 +834,7 @@ public class BHBMainGUI extends Application {
         for(LimitedTextField lt : codeFields){
             if(lt.getText().equals("")) labelColorPreviews.get(codeFields.indexOf(lt)).setBackground(new Background(new BackgroundFill(Color.rgb(92, 100, 108), CornerRadii.EMPTY, Insets.EMPTY)));
         }
-        currentTheme = "DARK";
+        currentTheme.setValue("DARK");
         copyButtonBHB.setGraphic(new CopyButtonIcon(false));
         copyButtonColorscheme.setGraphic(new CopyButtonIcon(false));
     }
@@ -854,7 +852,7 @@ public class BHBMainGUI extends Application {
             }
         }
 
-        currentTheme = "LIGHT";
+        currentTheme.setValue("LIGHT");
         copyButtonBHB.setGraphic(new CopyButtonIcon(true));
         copyButtonColorscheme.setGraphic(new CopyButtonIcon(true));
     }
@@ -866,8 +864,8 @@ public class BHBMainGUI extends Application {
     private void doClipboardCopy(){
         Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
         StringSelection stringSelection = new StringSelection("");
-        if(rootPane.getCenter().equals(mainBHBBox) && currentNickBHB != null && !currentNickBHB.equals("")) stringSelection = new StringSelection(currentNickBHB);
-        else if (currentNickColorScheme != null && !currentNickColorScheme.equals("")) stringSelection = new StringSelection(currentNickColorScheme);
+        if(rootPane.getCenter().equals(mainBHBBox) && !currentNickBHB.getValue().equals("")) stringSelection = new StringSelection(currentNickBHB.getValue());
+        else if (!currentNickColorScheme.getValue().equals("")) stringSelection = new StringSelection(currentNickColorScheme.getValue());
         clipboard.setContents(stringSelection, null);
     }
 
@@ -877,23 +875,39 @@ public class BHBMainGUI extends Application {
         if(referencedFieldsQueue.isEmpty()) return;
 
         //If the last action was a clear all, undo all 6 clears, else, undo 1
-        for(int i = 0; i < (lastActionClearAll ? 6 : 1); i++){
+        for(int i = 0; i < (Boolean.TRUE.equals(lastActionClearAll.getValue()) ? 6 : 1); i++){
             Integer codeFieldsID = referencedFieldsQueue.removeFirst();
             codeFields.get(codeFieldsID).setText(oldColorQueue.removeFirst());
             codeFields.get(codeFieldsID).requestFocus();
         }
-        lastActionClearAll = false;
+        lastActionClearAll.setValue(false);
         updateUndoButton();
     }
 
     //Create preview label coundaries based on a formatted nick
-    private static void parseNickToLabel(String nick, HBox previewLabels, Scheme selectedScheme, boolean isBhb){
+    private static void parseNickToLabel(Property<String> nick, HBox previewLabels, Scheme selectedScheme, boolean isBhb){
         previewLabels.getChildren().clear();
-        List<String> comp = Arrays.asList(nick.split("&#"));
-        if(isBhb || selectedScheme.toString().equals("Random Hex")) for(int i = 1; i < comp.size(); i++) previewLabels.getChildren().add(new PreviewLabel(comp.get(i).charAt(6), comp.get(i).substring(0,6), (comp.size() - 1)));
-        else for(int i = 1; i < nick.split("&").length; i++) previewLabels.getChildren().add(new PreviewLabel(nick.split("&")[i].charAt(1), Character.toString(nick.split("&")[i].charAt(0)), (nick.split("&").length - 1)));
+        List<String> comp = Arrays.asList(nick.getValue().split("&#"));
+        if(isBhb || selectedScheme.toString().equals("Random Hex")) {
+            for(int i = 1; i < comp.size(); i++) {
+                previewLabels.getChildren().add(
+                    new PreviewLabel(comp.get(i).charAt(6), 
+                        comp.get(i).substring(0,6), 
+                        (comp.size() - 1))
+                );
+            }
+        }
+        else {
+            for(int i = 1; i < nick.getValue().split("&").length; i++) {
+                previewLabels.getChildren().add(
+                    new PreviewLabel(nick.getValue().split("&")[i].charAt(1), 
+                        Character.toString(nick.getValue().split("&")[i].charAt(0)), 
+                        (nick.getValue().split("&").length - 1))
+                );
+            }
+            
+        }
     }
-
     //Allows for new generation mid program
     private void generateNewRandomScheme(){
 
@@ -923,7 +937,7 @@ public class BHBMainGUI extends Application {
     //======================================================
 
     private boolean checkForUpdates(){
-        return (compareVersions(CURRENT_VERSION, LATEST_VERSION) == -1);
+        return (compareVersions(CURRENT_VERSION.getValue(), LATEST_VERSION.getValue()) == -1);
     }
 
     private void startSelfUpdate(){
@@ -950,7 +964,7 @@ public class BHBMainGUI extends Application {
                     Thread.currentThread().interrupt();
                     logStatic(Level.SEVERE, "Exception in updateSelfWindows(); Stacktrace: " + ex.getStackTrace(), ex);
                 }
-                alreadySaved = true;
+                alreadySaved.setValue(true);;
                 res = updater.windowsUpdater();
             }
             else if(osName.substring(0,5).equals("Linux")){
@@ -959,7 +973,7 @@ public class BHBMainGUI extends Application {
                     Thread.currentThread().interrupt();
                     logStatic(Level.SEVERE, "Exception in updateSelfLinux(); Stacktrace: " + ex.getStackTrace(), ex);
                 }
-                alreadySaved = true;
+                alreadySaved.setValue(true);
                 res = updater.linuxUpdater();
             }
             else {
@@ -982,11 +996,11 @@ public class BHBMainGUI extends Application {
     //Static logger referencing
     private static void logStatic(Level logLevel, String logMessage, Throwable thrown){
         //Do not log if not error if verbose is off
-        if(!verboseLogging && logLevel.equals(Level.INFO)) return;
+        if(!Boolean.TRUE.equals(verboseLogging.getValue()) && logLevel.equals(Level.INFO)) return;
         //Do not log "thrown" with info, as it will be null
         if(logLevel.equals(Level.INFO)) Logger.getGlobal().log(logLevel, logMessage);
         else Logger.getGlobal().log(logLevel,  logMessage, thrown);
-        ++loggedItems;
+        loggedItems.setValue(loggedItems.getValue().intValue() + 1);
     }
 
     //Initalize the static logger accessed during runtime
@@ -1088,10 +1102,10 @@ public class BHBMainGUI extends Application {
         BufferedReader bReader = new BufferedReader(fReader);)
         { 
             String line;
-            String[] codes = new String[6];
+            List<String> codes = new ArrayList<>();
             //Read the codes
-            for(int i = 0; i < 6; i++) if((line = bReader.readLine()) != null && isHexOk(line)) codes[i] = line;
-            for(int i = 0; i < 6; i++) if(codes[i] != null) codeFields.get(i).setText(codes[i]);
+            for(int i = 0; i < 6; i++) if((line = bReader.readLine()) != null && isHexOk(line)) codes.set(i, line);
+            for(int i = 0; i < 6; i++) if(codes.get(i) != null) codeFields.get(i).setText(codes.get(i));
             enterNicknameBHB.setText(bReader.readLine().replace("\n", ""));
 
             //Set theme based on config
@@ -1126,8 +1140,7 @@ public class BHBMainGUI extends Application {
             configChooser.setTitle("Save configuration file");
             //Parses open windows and passes the first index to the save dialog, this should never error
             File saveFile = new File("");
-            Object[] openWindows = javafx.stage.Window.getWindows().stream().filter(Window::isShowing).toArray();
-            for(Object iterO : openWindows) if(iterO != null) saveFile = configChooser.showSaveDialog((Window)iterO);
+            for(Object iterO : Arrays.asList(javafx.stage.Window.getWindows().stream().filter(Window::isShowing).toArray())) if(iterO != null) saveFile = configChooser.showSaveDialog((Window)iterO);
 
             if(saveFile != null){
 
@@ -1159,15 +1172,15 @@ public class BHBMainGUI extends Application {
     private void saveApplicationState(){
 
         //Flag used during updates so that the JVM doesn't terminate and error out
-        if(!alreadySaved){
+        if(!Boolean.TRUE.equals(alreadySaved.getValue())){
             File tempStore = new File(System.getProperty("user.dir") + "/tempstore.txt");
-            String[] codes = new String[6];
-            for(int i = 0; i < 6; i++) codes[i] = codeFields.get(i).getText();
+            List<String> codes = new ArrayList<>();
+            for(int i = 0; i < 6; i++) codes.set(i, codeFields.get(i).getText());
             try( FileWriter fWriter = new FileWriter(tempStore); //Basic reader, throws FileNotFoundException
             BufferedWriter bWriter = new BufferedWriter(fWriter);)
             {
                 //Write the 6 code from boxes (including empty lines)
-                for(int i = 0; i < 6; i++) bWriter.write(codes[i] + "\n");
+                for(int i = 0; i < 6; i++) bWriter.write(codes.get(i) + "\n");
                 bWriter.write(enterNicknameBHB.getText() + "\n");
                 bWriter.write(currentTheme + "\n");
                 bWriter.write(justificationPriority.getValue());
@@ -1206,14 +1219,14 @@ public class BHBMainGUI extends Application {
 
     //Compare two version numbers - returns -1 if v1 < v2
     private int compareVersions(String v1, String v2) {
-        String[] components1 = v1.split("\\.");
-        String[] components2 = v2.split("\\.");
-        int length = Math.min(components1.length, components2.length);
+        List<String> components1 = Arrays.asList(v1.split("\\."));
+        List<String> components2 = Arrays.asList(v2.split("\\."));
+        int length = Math.min(components1.size(), components2.size());
         for(int i = 0; i < length; i++) {
-            int result = Integer.compare(Integer.parseInt(components1[i]), Integer.parseInt(components2[i]));
+            int result = Integer.compare(Integer.parseInt(components1.get(i)), Integer.parseInt(components2.get(i)));
             if(result != 0) return result;
         }
-        return Integer.compare(components1.length, components2.length);
+        return Integer.compare(components1.size(), components2.size());
     }
 
     //Reload schemes into combobox from the array
