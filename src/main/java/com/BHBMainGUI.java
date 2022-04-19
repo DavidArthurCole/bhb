@@ -555,23 +555,8 @@ public class BHBMainGUI extends Application {
         colorCodeEnterField.focusedProperty().addListener(listener -> lastEnteredField = colorCodeEnterField);
         colorCodeEnterField.setOnKeyPressed(e -> {if(ctrlZ.match(e)) undoChange();});
         colorCodeEnterField.textProperty().addListener((observable, oldValue, newValue) -> {
-
-            if(isHexOk(newValue)){
-                codeColorLabel.setBackground(new Background(new BackgroundFill(Color.rgb(
-                    Integer.parseInt(newValue.substring(0,2),16),
-                    Integer.parseInt(newValue.substring(2,4),16),
-                    Integer.parseInt(newValue.substring(4,6),16)), CornerRadii.EMPTY, Insets.EMPTY)));
-            }
-            else{
-                if(currentTheme.getValue().equals("DARK")) codeColorLabel.setBackground(new Background(new BackgroundFill(Color.rgb(92, 100, 108), CornerRadii.EMPTY, Insets.EMPTY)));
-                else{
-                    codeColorLabel.setBackground(new Background(new BackgroundFill(Color.rgb(
-                    Integer.parseInt("F2",16),
-                    Integer.parseInt("F2",16),
-                    Integer.parseInt("F2",16)), CornerRadii.EMPTY, Insets.EMPTY)));
-                }
-                
-            }
+            if(isHexOk(newValue)) codeColorLabel.setBackground(new Background(new BackgroundFill(Color.web(newValue), CornerRadii.EMPTY, Insets.EMPTY)));
+            else codeColorLabel.setBackground(currentTheme.getValue().equals("DARK") ? DARK_BACKGROUND : DEF_BACKGROUND);   
             unlockFields();
             updatePreviewBHB();
             updateTextFieldFontSize(colorCodeEnterField);
