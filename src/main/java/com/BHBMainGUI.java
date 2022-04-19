@@ -31,6 +31,7 @@ import java.nio.charset.StandardCharsets;
 import java.net.URL;
 import java.util.*;
 import java.util.logging.*;
+import java.util.stream.Collectors;
 
 import org.apache.commons.io.IOUtils;
 import org.json.JSONObject;
@@ -84,6 +85,10 @@ public class BHBMainGUI extends Application {
     private final Property<Boolean> lastActionClearAll = new SimpleBooleanProperty(false);
     //Definition for ctrl z shortcut
     private final KeyCodeCombination ctrlZ = new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_ANY);
+
+    //Statics for themes
+    private static final Background DARK_BACKGROUND = new Background(new BackgroundFill(Color.rgb(92, 100, 108), CornerRadii.EMPTY, Insets.EMPTY));
+    private static final Background DEF_BACKGROUND = new Background(new BackgroundFill(Color.web("F2F2F2"), CornerRadii.EMPTY, Insets.EMPTY));
 
     //For global access, changing disabling/editing between scenes
     private final BorderPane rootPane = new BorderPane();
@@ -160,7 +165,7 @@ public class BHBMainGUI extends Application {
             changeTheme(mainScene, previewColorLabels);
         }
     };
-    private final Setting expandCS2 = new Setting("De-limit Inputs", "Allow use of all characters in the ColorScheme 2 and BHB input fields.", "Off", Arrays.asList("Off", "On")){
+    private final Setting delimitInputs = new Setting("De-limit Inputs", "Allow use of all characters in the ColorScheme 2 and BHB input fields.", "Off", Arrays.asList("Off", "On")){
         @Override
         public void execute(){
             enterNicknameColorscheme.setRestrict(this.getValue().equals("Off") ? "[A-Za-z0-9_\\[\\] ]" : ".");
@@ -275,8 +280,8 @@ public class BHBMainGUI extends Application {
 
         HBox justificationBox = buildSetting(justificationPriority);
         HBox darkModeBox = buildSetting(darkMode);
-        HBox expandCS2Box = buildSetting(expandCS2);
-        VBox settingsBox = new VBox(justificationBox, darkModeBox, expandCS2Box);
+        HBox delimitInputsBox = buildSetting(delimitInputs);
+        VBox settingsBox = new VBox(justificationBox, darkModeBox, delimitInputsBox);
 
         settingsPane.setTop(settingsBox);
         settingsPane.setBottom(exitSettingsButton);
@@ -611,7 +616,7 @@ public class BHBMainGUI extends Application {
         codeBox.setSpacing(6);
         codeBox.setMinSize(200, 30);
 
-        logStatic(Level.INFO, "Created coebox with id: " + Integer.toString(id), null);
+        logStatic(Level.INFO, "Created codebox with id: " + Integer.toString(id), null);
         return codeBox;
     }
 
@@ -728,7 +733,6 @@ public class BHBMainGUI extends Application {
             if(oldCenter instanceof VBox){
                 //Handles rendering nickname labels after justification was changed L->R or R->L
                 if(Boolean.TRUE.equals(renderOnHook.getValue())){
-                    renderOnHook.setValue(false);
                     updatePreviewBHB();
                 }
                 //Show the main box again
@@ -772,17 +776,20 @@ public class BHBMainGUI extends Application {
 
         int userInputLength = enterNicknameBHB.getText().length();
 
+        //Reset hook handler
+        renderOnHook.setValue(false);
+
         //Need to be at least 2 codes
         int validCodes = 0;
-        for(int i = 0; i <= 5; i++) if(!codeFields.get(i).isDisabled() && isHexOk(codeFields.get(i).getText())) validCodes++;
-        if (userInputLength >=3 && validCodes >= 2 && (userInputLength >= ((validCodes * 2) - 1))){
-            List<String> codeList = new ArrayList<>(validCodes);
-            for(int i = 0; i < validCodes; i++) codeList.add(i, codeFields.get(i).getText());
+        for(LimitedTextField lt : codeFields) if(!lt.isDisable() && isHexOk(lt.getText())) validCodes++;
+        if (validCodes >= 2 && (userInputLength >= ((validCodes * 2) - 1))){
+            List<String> codeList = codeFields.stream().map(TextInputControl::getText).collect(Collectors.toList());
 
             currentNickBHB.setValue(Blend.blendMain(validCodes, enterNicknameBHB.getText(), codeList, justificationPriority.getValue().equals("Right")));
             parseNickToLabel(currentNickBHB, previewLabelsBHBBox, selectedScheme, true);
             return;        
         }
+
         previewLabelsBHBBox.getChildren().clear();
         previewLabelsBHBBox.setPrefHeight(0);
         currentNickBHB.setValue("");
@@ -823,38 +830,17 @@ public class BHBMainGUI extends Application {
 
     //Bool swapping between light & dark
     private void changeTheme(Scene mainScene, List<Label> labelColorPreviews){
-        if(currentTheme.getValue().equals("LIGHT")) goDark(mainScene,labelColorPreviews);
-        else goLight(mainScene, labelColorPreviews);
-    }
+        boolean isLight = currentTheme.getValue().equals("LIGHT");
 
-    //Dark mode
-    private void goDark(Scene mainScene, List<Label> labelColorPreviews){
-        for(Button b : upButtons) b.setTextFill(Color.WHITE);
-        mainScene.getStylesheets().add(getClass().getClassLoader().getResource("dark.css").toString());
-        for(LimitedTextField lt : codeFields){
-            if(lt.getText().equals("")) labelColorPreviews.get(codeFields.indexOf(lt)).setBackground(new Background(new BackgroundFill(Color.rgb(92, 100, 108), CornerRadii.EMPTY, Insets.EMPTY)));
+        for(Button b : upButtons) b.setTextFill(isLight ? Color.WHITE : Color.BLACK);
+        if(isLight) mainScene.getStylesheets().add(getClass().getClassLoader().getResource("dark.css").toString());
+        else mainScene.getStylesheets().remove(getClass().getClassLoader().getResource("dark.css").toString());
+        for(LimitedTextField lt : codeFields.stream().filter(lt -> lt.getText().equals("")).collect(Collectors.toList())){
+            labelColorPreviews.get(codeFields.indexOf(lt)).setBackground(isLight ? DARK_BACKGROUND : DEF_BACKGROUND);
         }
-        currentTheme.setValue("DARK");
-        copyButtonBHB.setGraphic(new CopyButtonIcon(false));
-        copyButtonColorscheme.setGraphic(new CopyButtonIcon(false));
-    }
-
-    //Light mode
-    private void goLight(Scene mainScene, List<Label> labelColorPreviews){
-        for(Button b : upButtons) b.setTextFill(Color.BLACK);
-        mainScene.getStylesheets().remove(getClass().getClassLoader().getResource("dark.css").toString());
-        for(LimitedTextField lt : codeFields){
-            if(lt.getText().equals("")){
-                labelColorPreviews.get(codeFields.indexOf(lt)).setBackground(new Background(new BackgroundFill(Color.rgb(
-                    Integer.parseInt("F2",16),
-                    Integer.parseInt("F2",16),
-                    Integer.parseInt("F2",16)), CornerRadii.EMPTY, Insets.EMPTY)));
-            }
-        }
-
-        currentTheme.setValue("LIGHT");
-        copyButtonBHB.setGraphic(new CopyButtonIcon(true));
-        copyButtonColorscheme.setGraphic(new CopyButtonIcon(true));
+        currentTheme.setValue(isLight ? "DARK" : "LIGHT");
+        copyButtonBHB.setGraphic(new CopyButtonIcon(!isLight));
+        copyButtonColorscheme.setGraphic(new CopyButtonIcon(!isLight));
     }
 
     //======================================================
@@ -886,26 +872,18 @@ public class BHBMainGUI extends Application {
 
     //Create preview label coundaries based on a formatted nick
     private static void parseNickToLabel(Property<String> nick, HBox previewLabels, Scheme selectedScheme, boolean isBhb){
+        //Clear existing labels
         previewLabels.getChildren().clear();
-        List<String> comp = Arrays.asList(nick.getValue().split("&#"));
+
+        //Split nick into usable form for both hex and color codes
+        List<String> comp = Arrays.asList(nick.getValue().replace("#", "").split("&")).stream().filter(s -> !s.equals("")).collect(Collectors.toList());
+
+        //Determine character extraction by format
         if(isBhb || selectedScheme.toString().equals("Random Hex")) {
-            for(int i = 1; i < comp.size(); i++) {
-                previewLabels.getChildren().add(
-                    new PreviewLabel(comp.get(i).charAt(6), 
-                        comp.get(i).substring(0,6), 
-                        (comp.size() - 1))
-                );
-            }
+            for(String s : comp) previewLabels.getChildren().add(new PreviewLabel(s.charAt(6), s.substring(0, 6), comp.size() - 1));
         }
-        else {
-            for(int i = 1; i < nick.getValue().split("&").length; i++) {
-                previewLabels.getChildren().add(
-                    new PreviewLabel(nick.getValue().split("&")[i].charAt(1), 
-                        Character.toString(nick.getValue().split("&")[i].charAt(0)), 
-                        (nick.getValue().split("&").length - 1))
-                );
-            }
-            
+        else{
+            for(String s: comp) previewLabels.getChildren().add(new PreviewLabel(s.charAt(1), s.substring(0, 1), comp.size() - 1));
         }
     }
     //Allows for new generation mid program
@@ -964,7 +942,7 @@ public class BHBMainGUI extends Application {
                     Thread.currentThread().interrupt();
                     logStatic(Level.SEVERE, "Exception in updateSelfWindows(); Stacktrace: " + ex.getStackTrace(), ex);
                 }
-                alreadySaved.setValue(true);;
+                alreadySaved.setValue(true);
                 res = updater.windowsUpdater();
             }
             else if(osName.substring(0,5).equals("Linux")){
@@ -1102,9 +1080,9 @@ public class BHBMainGUI extends Application {
         BufferedReader bReader = new BufferedReader(fReader);)
         { 
             String line;
-            List<String> codes = new ArrayList<>();
+            List<String> codes = new ArrayList<>(Arrays.asList("","","","","",""));
             //Read the codes
-            for(int i = 0; i < 6; i++) if((line = bReader.readLine()) != null && isHexOk(line)) codes.set(i, line);
+            for(int i = 0; i < 6; i++) if((line = bReader.readLine()) != null && isHexOk(line)) codes.add(i, line);
             for(int i = 0; i < 6; i++) if(codes.get(i) != null) codeFields.get(i).setText(codes.get(i));
             enterNicknameBHB.setText(bReader.readLine().replace("\n", ""));
 
@@ -1115,12 +1093,18 @@ public class BHBMainGUI extends Application {
                 darkMode.setValue("On");
             }
 
+            //Read saved justification priority and set it accordingly
             String savedJustification = bReader.readLine();
             if(savedJustification != null) justificationPriority.setValue(savedJustification);
             else justificationPriority.setValue("Left");
+
+            //Read saved "delimitInputs" preference (default is "Off") - and execute
+            String savedDelimit = bReader.readLine();
+            if(savedDelimit != null) delimitInputs.setValue(savedDelimit);
+            else delimitInputs.setValue("Off");
+            delimitInputs.execute();
         }
-        catch(IOException | StringIndexOutOfBoundsException e)
-        {
+        catch(IOException | StringIndexOutOfBoundsException e){
             logStatic(Level.SEVERE, "Exception in forceLoad(); Stacktrace: " + e.getStackTrace(), e);
         }
 
@@ -1147,16 +1131,10 @@ public class BHBMainGUI extends Application {
                 List<String> codes = new ArrayList<>(6);
                 for(LimitedTextField lt : codeFields) if(isHexOk(lt.getText())) codes.add(lt.getText());
 
-                try( FileWriter fWriter = new FileWriter(saveFile); //Basic reader, throws FileNotFoundException
-                BufferedWriter bWriter = new BufferedWriter(fWriter);)
-                { 
-                    for(int i = 0; i < 6; i++){
-                        bWriter.write(codes.get(i));
-                        if(i != 5) bWriter.newLine();
-                    }
+                try(BufferedWriter bWriter = new BufferedWriter(new FileWriter(saveFile))){ //Basic reader, throws FileNotFoundException
+                    for(int i = 0; i < 6; i++) bWriter.write(i != 5 ? codes.get(i) + "\n" : codes.get(i));
                 }
-                catch(IOException | StringIndexOutOfBoundsException e)
-                {
+                catch(IOException | StringIndexOutOfBoundsException e){
                     new BHBAlert(AlertType.ERROR, "There was a problem saving the config.", "", "Error: " + e.getLocalizedMessage()).showAndWait();
                     logStatic(Level.SEVERE, "Exception in trySave(); Stacktrace: " + e.getStackTrace(), e);
                 }
@@ -1175,15 +1153,16 @@ public class BHBMainGUI extends Application {
         if(!Boolean.TRUE.equals(alreadySaved.getValue())){
             File tempStore = new File(System.getProperty("user.dir") + "/tempstore.txt");
             List<String> codes = new ArrayList<>();
-            for(int i = 0; i < 6; i++) codes.set(i, codeFields.get(i).getText());
+            for(int i = 0; i < 6; i++) codes.add(i, codeFields.get(i).getText());
             try( FileWriter fWriter = new FileWriter(tempStore); //Basic reader, throws FileNotFoundException
             BufferedWriter bWriter = new BufferedWriter(fWriter);)
             {
                 //Write the 6 code from boxes (including empty lines)
                 for(int i = 0; i < 6; i++) bWriter.write(codes.get(i) + "\n");
                 bWriter.write(enterNicknameBHB.getText() + "\n");
-                bWriter.write(currentTheme + "\n");
+                bWriter.write(currentTheme.getValue() + "\n");
                 bWriter.write(justificationPriority.getValue());
+                bWriter.write(delimitInputs.getValue());
 
                 //Hides the file from the user - only works on Windows
                 String osName = System.getProperty("os.name");
@@ -1191,8 +1170,7 @@ public class BHBMainGUI extends Application {
                     Runtime.getRuntime().exec("attrib +H \"" +  System.getProperty("user.dir") + "/tempstore.txt\"" );
                 }
             }
-            catch(IOException | StringIndexOutOfBoundsException e)
-            {
+            catch(IOException | StringIndexOutOfBoundsException e){
                 new BHBAlert(AlertType.ERROR, "There was a problem saving the config.", "", "Error: " + e.getLocalizedMessage()).showAndWait();
                 logStatic(Level.SEVERE, "Exception in forceSave(); Stacktrace: " + e.getStackTrace(), e);
             }
@@ -1201,14 +1179,13 @@ public class BHBMainGUI extends Application {
 
     //Parses JSON from a url
     private static String getJSON(String url) {
-
         try{
             return(new JSONObject(IOUtils.toString(new URL(url), StandardCharsets.UTF_8)).toString());
         }
         catch(IOException ex){
             new BHBAlert(AlertType.ERROR, "An unexpected error occurred.", "", "Error: " + ex.getLocalizedMessage()).showAndWait();
             logStatic(Level.SEVERE, "IOException during getJSON(); Stacktrace: " + ex.getStackTrace(), ex);
-            return null;
+            return "";
         }
     }
 
@@ -1231,8 +1208,7 @@ public class BHBMainGUI extends Application {
 
     //Reload schemes into combobox from the array
     private void reloadSchemes(){
-        schemes.getItems().clear();
-        for(Scheme s : loadedSchemes) schemes.getItems().add(s);
+        for(Scheme s : loadedSchemes) schemes.getItems().add(loadedSchemes.indexOf(s), s);
     }
 
     //Initialize schemes for startup
