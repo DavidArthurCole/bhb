@@ -14,12 +14,9 @@ public class Blend {
 
     public static List<Integer> findSplitLengths(String word, int numSplits){
 
-        int len = word.length();
-
-        //Store the length each substring should be
         List<Integer> solution = new ArrayList<>();
 
-        int roughDivision = (int) Math.ceil( (double) len/numSplits); // the length of each divided word
+        int roughDivision = (int) Math.ceil((double)(word.length())/numSplits); // the length of each divided word
         int remainingLetters = word.length();
         
         boolean reduced = false; // flag to see if I've already reduced the size of the sub-words
