@@ -49,7 +49,7 @@ public class BHBMainGUI extends Application {
     //======================================================
 
     //Global current version indicator
-    private static final Property<String> CURRENT_VERSION = new SimpleStringProperty("1.5.1"){
+    private static final Property<String> CURRENT_VERSION = new SimpleStringProperty("1.5.2"){
         @Override
         public String toString(){ return this.getValue();}
     };
@@ -344,7 +344,7 @@ public class BHBMainGUI extends Application {
         newBox.setMinHeight(30);
         //newBox.setMinHeight(DEF_SD.detSize(30, Axis.HEIGHT));
 
-
+        //Create the label
         Label settingName = new Label(setting.getName() + ":");
         RadioButton rb1 = new RadioButton(setting.getOptions().get(0));
         RadioButton rb2 = new RadioButton(setting.getOptions().get(1));  
@@ -1127,6 +1127,8 @@ public class BHBMainGUI extends Application {
         }
         catch(Exception e){
             logStatic(Level.SEVERE, "Exception in forceLoad(); Stacktrace: " + e.getStackTrace(), e);
+            logStatic(Level.INFO, "tempStore.txt deleted?: " + Boolean.toString(tempStore.delete()), null);
+            return;
         }
 
         //Delete the file once loaded
@@ -1182,7 +1184,7 @@ public class BHBMainGUI extends Application {
                 for(int i = 0; i < 6; i++) bWriter.write(codes.get(i) + "\n");
                 bWriter.write(enterNicknameBHB.getText() + "\n");
                 bWriter.write(currentTheme.getValue() + "\n");
-                bWriter.write(justificationPriority.getValue());
+                bWriter.write(justificationPriority.getValue() + "\n");
                 bWriter.write(delimitInputs.getValue());
 
                 //Hides the file from the user - only works on Windows

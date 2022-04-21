@@ -1,6 +1,7 @@
 package com.util.gui_helper;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -55,8 +56,8 @@ public class Blend {
         //Output will be appended over time
         StringBuilder output = new StringBuilder();
 
-        List<Integer> componentsOne = new ArrayList<>(List.of(hexR(hexOne), hexG(hexOne), hexB(hexOne)));
-        List<Integer> compDif = new ArrayList<>(List.of(hexR(hexTwo) - hexR(hexOne), hexG(hexTwo) - hexG(hexOne), hexB(hexTwo) - hexB(hexOne)));
+        List<Integer> componentsOne = new ArrayList<>(Arrays.asList(hexR(hexOne), hexG(hexOne), hexB(hexOne)));
+        List<Integer> compDif = new ArrayList<>(Arrays.asList(hexR(hexTwo) - hexR(hexOne), hexG(hexTwo) - hexG(hexOne), hexB(hexTwo) - hexB(hexOne)));
 
         //Loop through each step
         for(float j = 0; j <= (input.length() - 1); ++j){
