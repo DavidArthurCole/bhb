@@ -49,7 +49,7 @@ public class BHBMainGUI extends Application {
     //======================================================
 
     //Global current version indicator
-    private static final Property<String> CURRENT_VERSION = new SimpleStringProperty("1.5.2"){
+    private static final Property<String> CURRENT_VERSION = new SimpleStringProperty("1.5.0"){
         @Override
         public String toString(){ return this.getValue();}
     };
@@ -146,7 +146,6 @@ public class BHBMainGUI extends Application {
     private static final Menu menuEdit = new Menu("Edit");
     private static final Menu menuTools = new Menu("Tools");
     private static final Menu menuHelp = new Menu("Help");
-    private static final Menu menuFile = new Menu("File");
      
     private final VBox codesBox = new VBox(makeCodeBox(1), makeCodeBox(2), makeCodeBox(3), makeCodeBox(4), makeCodeBox(5), makeCodeBox(6), clearAllCodes);
     private final VBox colorPickerBox = new VBox();
@@ -385,16 +384,6 @@ public class BHBMainGUI extends Application {
      */
     private void buildMenuItemsBHB(Stage stage){
 
-        saveItem.setOnAction( e -> saveCodes());
-
-        loadItem.setOnAction( e -> {
-            if(!tryLoad(stage)){
-                new BHBAlert(AlertType.ERROR, 
-                "The file you selected is not recognized as a valid configuration file. If you believe this is an error, please reach out.",
-                "Error", "Invalid configuration file").showAndWait();
-            }
-        });
-
         undoItem.setOnAction(e -> undoChange());
 
         switchStagesItem.setOnAction(e -> switchStages(stage));
@@ -430,12 +419,11 @@ public class BHBMainGUI extends Application {
      * @see Menu
      */
     private void buildMenusBHB(){
-        menuFile.getItems().addAll(saveItem, loadItem);
         menuEdit.getItems().addAll(undoItem);
         menuHelp.getItems().addAll(aboutItem, gitHubItem, updateCheckerItem);
         menuTools.getItems().addAll(slotMachineColorsItem, switchStagesItem, settingsItem);
 
-        menuBar.getMenus().addAll(menuFile, menuEdit, menuTools, menuHelp);
+        menuBar.getMenus().addAll(menuEdit, menuTools, menuHelp);
         menuBar.setBorder(DEF_BORDER);
 
         logStatic(Level.INFO, "BHB Menus init completed", null);
@@ -721,26 +709,16 @@ public class BHBMainGUI extends Application {
 
     //Switch between BHB and Colorscheme
     private void switchStages(Stage stage){
-        if(rootPane.getCenter().equals(mainBHBBox)){
-            rootPane.setCenter(mainColorschemeBox);
-            stage.setTitle("Colorscheme V2");
-            //Disable un-used buttons in scene
-            saveItem.setDisable(true);
-            loadItem.setDisable(true);
-            slotMachineColorsItem.setDisable(true);
-            switchStagesItem.setText("Switch to BHB");
-            logStatic(Level.INFO, "Switched to ColorScheme V2", null);
-        }
-        else{
-            rootPane.setCenter(mainBHBBox);
-            stage.setTitle("Blazin's Hex Blender");
-            //Re-enable used buttons in scene
-            saveItem.setDisable(false);
-            loadItem.setDisable(false);
-            slotMachineColorsItem.setDisable(false);
-            switchStagesItem.setText("Switch to Colorscheme V2");
-            logStatic(Level.INFO, "Switched to BHB", null);
-        }
+
+        boolean bFlag = rootPane.getCenter().equals(mainBHBBox);
+
+        rootPane.setCenter(bFlag ? mainColorschemeBox : mainBHBBox);
+        stage.setTitle(bFlag ? "ColorScheme V2" : "Blazin's Hex Blender");
+        saveItem.setDisable(bFlag);
+        loadItem.setDisable(bFlag);
+        slotMachineColorsItem.setDisable(bFlag);
+        switchStagesItem.setText(bFlag ? "Switch to BHB" : "Switch to ColorScheme");
+        logStatic(Level.INFO, "Switched to " + (bFlag ? "BHB" : "ColorScheme V2"), null);
     }
 
     private void toggleSettings(){
@@ -945,45 +923,21 @@ public class BHBMainGUI extends Application {
         ButtonType no = new ButtonType("No", ButtonBar.ButtonData.OK_DONE);
         ButtonType yes = new ButtonType("Yes", ButtonBar.ButtonData.CANCEL_CLOSE);
 
-        Alert updateAlert = new Alert(AlertType.CONFIRMATION, "An updated version of BHB is available. Current: " 
-            + CURRENT_VERSION + ", New: " + LATEST_VERSION + ". Update now? This will restart your program.", no, yes);
-        updateAlert.setHeaderText("Out of date");
-        updateAlert.setTitle("Updates found");
-        Optional<ButtonType> result = updateAlert.showAndWait();
+        Optional<ButtonType> result = new BHBAlert(AlertType.CONFIRMATION, 
+            "An updated version of BHB is available. Current: " + CURRENT_VERSION + ", New: " + LATEST_VERSION + ". Update now? This will restart BHB.",
+            "Updates found", "Out of date", no, yes).showAndWait();
 
         if(result.orElse(no) == yes){
-            String osName = System.getProperty("os.name");
-            String res;
             Thread saveThread = new Thread(this::saveApplicationState);
             saveThread.start();
 
-            if(osName.length() >= 7 &&  osName.substring(0, 7).equals("Windows")){
-                try { saveThread.join();}
-                catch (InterruptedException ex) {
-                    Thread.currentThread().interrupt();
-                    logStatic(Level.SEVERE, "Exception in updateSelfWindows(); Stacktrace: " + ex.getStackTrace(), ex);
-                }
-                alreadySaved.setValue(true);
-                res = updater.windowsUpdater();
+            try{ saveThread.join(); }
+            catch (InterruptedException e){ 
+                Thread.currentThread().interrupt();
+                logStatic(Level.SEVERE, "Exception in pre-update save; Stacktrace: " + e.getStackTrace(), e);
             }
-            else if(osName.substring(0,5).equals("Linux")){
-                try { saveThread.join();}
-                catch (InterruptedException ex) {
-                    Thread.currentThread().interrupt();
-                    logStatic(Level.SEVERE, "Exception in updateSelfLinux(); Stacktrace: " + ex.getStackTrace(), ex);
-                }
-                alreadySaved.setValue(true);
-                res = updater.linuxUpdater();
-            }
-            else {
-                try { saveThread.join();}
-                catch (InterruptedException ex) {
-                    Thread.currentThread().interrupt();
-                    logStatic(Level.SEVERE, "Exception in updateSelfMacOS(); Stacktrace: " + ex.getStackTrace(), ex);
-                }
-                res = updater.macOSUpdater();   
-            }
-            if(!(res.equals(""))) logStatic(Level.SEVERE, res, null);
+            alreadySaved.setValue(true);
+            if(!(updater.update(System.getProperty("os.name")).equals(""))) logStatic(Level.SEVERE, "Error in updater thread.", null);
             System.exit(0);
         }
     }
@@ -1008,7 +962,7 @@ public class BHBMainGUI extends Application {
         if(logFile.exists()) logFile.delete();
         try {  
             // This block configures the logger with handler and formatter  
-            FileHandler fh = new FileHandler("log.txt");  
+            FileHandler fh = new FileHandler("log.txt"); 
             log.addHandler(fh);
             fh.setFormatter(new SimpleFormatter());
             logStatic(Level.INFO, "Logger init", null);
@@ -1026,59 +980,11 @@ public class BHBMainGUI extends Application {
             processBuilder.directory(new File(System.getProperty("user.dir")));
             processBuilder.redirectErrorStream(false);
             processBuilder.start();
+            logStatic(Level.INFO, "Old process killed", null);
     
         } catch (IOException e) {
             logStatic(Level.SEVERE, "Exception in determining old process. Stacktrace: " + e.getStackTrace(), e);
-            return;
         }
-        logStatic(Level.INFO, "Old process killed", null);
-    }
-
-    //Non-intrusive loading, will not force
-    private boolean tryLoad(Stage stage){
-        //Create a new dialog
-        FileChooser configChooser = new FileChooser();
-        //Configure to only allow TXT files ~ set the title
-        configChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("BHB Configs (.txt)", "*.txt"));
-        configChooser.setTitle("Open configuration file");
-        //Open the dialog
-        File configFile = configChooser.showOpenDialog(stage);
-        if(configFile != null){
-            for(int i = 0; i < 6; i++) codeFields.get(i).setText("");
-            try( FileReader fReader = new FileReader(configFile); //Basic reader, throws FileNotFoundException
-            BufferedReader bReader = new BufferedReader(fReader);)
-            { 
-                //Read the codes
-                for(int i = 0; i < 6; i++) {
-                    String line = bReader.readLine();
-                    if(line != null){
-                        if(isHexOk(line) || line.equals("")){
-                            codeFields.get(i).setText(line);
-                        }
-                        else {
-                            //Error in file reading - invalid chars reached
-                            logStatic(Level.SEVERE, "Error in file reading, invalid characters reached", null);
-                            return false;
-                        }
-                    }    
-                }
-
-                //Set justification priority from tempstore, default val is "Left"
-                String justificationSaved = bReader.readLine();
-                justificationPriority.setValue((justificationSaved != null) ? justificationSaved : "Left");
-
-                logStatic(Level.INFO, "tryLoad(); execution was succesful", null);
-                return true;
-            }
-            //Catch various IO errors from reading the files
-            catch(Exception ex)
-            {
-                logStatic(Level.SEVERE, "Error during tryLoad(); Stacktrace: " + ex.getStackTrace(), ex);
-                return false;
-            }
-        }
-        //Handles null choice - A.K.A user cancelled
-        return true;
     }
 
     //Intrusive loading technique, will disrupt the program's functionality temporarily
@@ -1133,40 +1039,6 @@ public class BHBMainGUI extends Application {
 
         //Delete the file once loaded
         logStatic(Level.INFO, "tempStore.txt deleted?: " + Boolean.toString(tempStore.delete()), null);
-    }
-
-    //Non-intrusive saving, will not force
-    private void saveCodes(){
-
-        int goodCodes = 0;
-        for(int i = 0; i < 6; i++) if(isHexOk(codeFields.get(i).getText())) goodCodes++;
-
-        if(goodCodes >= 1){
-            FileChooser configChooser = new FileChooser();
-            configChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("BHB Configs (.txt)", "*.txt"));
-            configChooser.setTitle("Save configuration file");
-            //Parses open windows and passes the first index to the save dialog, this should never error
-            File saveFile = new File("");
-            for(Object iterO : Arrays.asList(javafx.stage.Window.getWindows().stream().filter(Window::isShowing).toArray())) if(iterO != null) saveFile = configChooser.showSaveDialog((Window)iterO);
-
-            if(saveFile != null){
-
-                List<String> codes = new ArrayList<>(6);
-                for(LimitedTextField lt : codeFields) if(isHexOk(lt.getText())) codes.add(lt.getText());
-
-                try(BufferedWriter bWriter = new BufferedWriter(new FileWriter(saveFile))){ //Basic reader, throws FileNotFoundException
-                    for(int i = 0; i < 6; i++) bWriter.write(i != 5 ? codes.get(i) + "\n" : codes.get(i));
-                }
-                catch(IOException | StringIndexOutOfBoundsException e){
-                    new BHBAlert(AlertType.ERROR, "There was a problem saving the config.", "", "Error: " + e.getLocalizedMessage()).showAndWait();
-                    logStatic(Level.SEVERE, "Exception in trySave(); Stacktrace: " + e.getStackTrace(), e);
-                }
-            }
-        }
-        else{
-            new BHBAlert(AlertType.ERROR, "You do not have any codes to save. No file was created.", "", "Nothing to save").showAndWait();
-            logStatic(Level.INFO, "Empty save was attempted, and intercepted", null);
-        }   
     }
 
     //Intrusive saving technique, will disrupt the program's functionality temporarily

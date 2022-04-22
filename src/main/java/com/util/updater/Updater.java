@@ -11,7 +11,15 @@ public class Updater {
         this.latest = latest;
     }
 
-    public String windowsUpdater(){
+    public String update(String os){
+        os = os.toLowerCase();
+        if(os.indexOf("windows") != -1) return this.windowsUpdater();
+        else if(os.indexOf("linux") != -1) return this.linuxUpdater();
+        else if(os.indexOf("mac") != -1) return this.macOSUpdater();
+        else return "Error: OS not supported";
+    }
+
+    private String windowsUpdater(){
         String res = "";
         String baseCmd = "cmd.exe /c cd " +  System.getProperty("user.dir") + " & taskkill /F /PID " + getPID() 
             + " & curl -L -O " + "https://github.com/DavidArthurCole/bhb/releases/download/" + latest;
@@ -29,13 +37,13 @@ public class Updater {
         return res;
     }
 
-    public String linuxUpdater(){
+    private String linuxUpdater(){
         return (cmdExec.executeCommandLinux("#!/bin/bash\n\ncd " + System.getProperty("user.dir") + 
             "\nwget https://github.com/DavidArthurCole/bhb/releases/download/" + 
             latest + "/BHB.jar -O BHB.jar && java -jar BHB.jar " + Long.toString(getPID())));
     }
     
-    public String macOSUpdater(){
+    private String macOSUpdater(){
         return cmdExec.executeCommandMacOS("cd " + System.getProperty("user.dir") + 
             " && curl -H \"Accept: application/zip\" -L -o BHB.jar 'https://github.com/DavidArthurCole/bhb/releases/download/" + 
             latest + "/BHB.jar' && java -jar BHB.jar " + Long.toString(getPID()));

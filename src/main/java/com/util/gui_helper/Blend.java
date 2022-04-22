@@ -9,8 +9,8 @@ public class Blend {
 
     private Blend(){}
 
-    private static String padWithZeros(int inputInt){
-        return String.format("%1$" + 2 + "s", Integer.toHexString(inputInt)).replace(' ', '0');
+    private static String pad(float inputInt){
+        return String.format("%1$" + 2 + "s", Integer.toHexString((int)inputInt)).replace(' ', '0');
     }
 
     public static List<Integer> findSplitLengths(String word, int numSplits){
@@ -61,12 +61,9 @@ public class Blend {
 
         //Loop through each step
         for(float j = 0; j <= (input.length() - 1); ++j){
-            float gainPercent = (j / (input.length() - 1));
-            output.append("&#" + ( 
-                padWithZeros((int)(componentsOne.get(0) + (gainPercent * compDif.get(0)))) +
-                padWithZeros((int)(componentsOne.get(1) + (gainPercent * compDif.get(1)))) +
-                padWithZeros((int)(componentsOne.get(2) + (gainPercent * compDif.get(2))))
-            ).toUpperCase() + input.charAt((int)j));
+            output.append("&#");
+            for(int i = 0; i < 3; i++) output.append(pad(componentsOne.get(i) + (compDif.get(i) * (j / (input.length() - 1)))).toUpperCase());
+            output.append(input.charAt((int)j));
         }
         
         return output.toString();
