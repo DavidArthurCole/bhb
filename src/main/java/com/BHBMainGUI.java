@@ -23,7 +23,6 @@ import javafx.scene.text.*;
 import javafx.stage.*;
 
 import java.awt.datatransfer.StringSelection;
-import java.awt.datatransfer.Clipboard;
 import java.awt.Toolkit;
 
 import java.io.*;
@@ -39,7 +38,6 @@ import com.google.gson.*;
 
 import com.gui.*;
 import com.util.gui_helper.*;
-import com.util.gui_helper.SizeDeterminer.Axis;
 import com.util.updater.Updater;
 
 public class BHBMainGUI extends Application {
@@ -49,7 +47,7 @@ public class BHBMainGUI extends Application {
     //======================================================
 
     //Global current version indicator
-    private static final Property<String> CURRENT_VERSION = new SimpleStringProperty("1.5.0"){
+    private static final Property<String> CURRENT_VERSION = new SimpleStringProperty("1.5.3"){
         @Override
         public String toString(){ return this.getValue();}
     };
@@ -102,11 +100,6 @@ public class BHBMainGUI extends Application {
     private final MenuItem undoItem = new MenuItem("Undo");
     private final MenuItem loadItem = new MenuItem("Load");
     private Scene mainScene;
-
-    //Global size determination
-    private SizeDeterminer DEF_SD;
-    private static double DEF_H;
-    private static double DEF_W;
 
     //Colorscheme 
     private final BorderPane mainColorschemeBox = new BorderPane();
@@ -207,12 +200,6 @@ public class BHBMainGUI extends Application {
 
         drawFrames(stage);
 
-        //Initialize the size determination engine
-        DEF_H = rootPane.getHeight();
-        DEF_W = rootPane.getWidth();
-
-        DEF_SD = new SizeDeterminer(DEF_H, DEF_W, rootPane.getHeight(), rootPane.getWidth());
-
         //Check for updates when the program launches
         new Thread(() -> Platform.runLater(() -> {
             if(checkForUpdates()) startSelfUpdate();
@@ -230,10 +217,12 @@ public class BHBMainGUI extends Application {
         rootPane.setCenter(rootPane.getCenter() == null ? mainBHBBox : rootPane.getCenter());
         mainScene = new Scene(rootPane);
 
+        stage.setMinHeight(400);
+        stage.setMinWidth(436);
         stage.setScene(mainScene);
         stage.setTitle("Hex Blender");
         stage.show();
-        stage.setResizable(false);
+        //stage.setResizable(false);
 
         //Load from tempstore
         forceLoad(mainScene, previewColorLabels);
@@ -293,8 +282,6 @@ public class BHBMainGUI extends Application {
 
         exitSettingsIcon.setFitWidth(30);
         exitSettingsIcon.setFitHeight(30);
-        /* exitSettingsIcon.setFitWidth(DEF_SD.detSize(30, Axis.WIDTH));
-        exitSettingsIcon.setFitHeight(DEF_SD.detSize(30, Axis.HEIGHT)); */
 
         Button exitSettingsButton = new Button();
         exitSettingsButton.setMinWidth(mainScene.getWidth());
@@ -316,14 +303,11 @@ public class BHBMainGUI extends Application {
 
         HBox masterBox = new HBox();
         masterBox.setMinHeight(45);
-        //masterBox.setMinHeight(DEF_SD.detSize(45, Axis.HEIGHT));
         masterBox.setAlignment(Pos.CENTER);
         masterBox.setBorder(DEF_BORDER);
         ImageView helpIcon = new ImageView(new Image(getClass().getClassLoader().getResource("help.png").toString()));
         helpIcon.setFitWidth(15);
         helpIcon.setFitHeight(15);
-        /* helpIcon.setFitHeight(DEF_SD.detSize(15, Axis.HEIGHT));
-        helpIcon.setFitWidth(DEF_SD.detSize(15, Axis.WIDTH)); */
 
         Label helpLabel = new Label();
         helpLabel.setAlignment(Pos.BASELINE_RIGHT);
@@ -331,17 +315,13 @@ public class BHBMainGUI extends Application {
         helpLabel.setGraphic(helpIcon);
         Tooltip helpTooltip = new Tooltip(setting.getDescription());
         helpTooltip.setStyle("-fx-font-size: 12");
-        //helpTooltip.setStyle("-fx-font-size: " + DEF_SD.detSize(12, Axis.HEIGHT));
         helpLabel.setTooltip(helpTooltip);
 
         HBox newBox = new HBox();
         newBox.setAlignment(Pos.CENTER);
         newBox.setSpacing(6);
-        //newBox.setSpacing(DEF_SD.detSize(6, Axis.WIDTH));
         newBox.setMinWidth(250);
-        //newBox.setMinWidth(DEF_SD.detSize(250, Axis.WIDTH));
         newBox.setMinHeight(30);
-        //newBox.setMinHeight(DEF_SD.detSize(30, Axis.HEIGHT));
 
         //Create the label
         Label settingName = new Label(setting.getName() + ":");
@@ -442,7 +422,6 @@ public class BHBMainGUI extends Application {
 
         copyToFirstEmpty.setTooltip(new Tooltip("Move colorpicker color to codes"));
         copyToFirstEmpty.setFont(Font.font("Arial", FontWeight.SEMI_BOLD, 14));
-        //copyToFirstEmpty.setFont(Font.font("Arial", FontWeight.SEMI_BOLD, DEF_SD.detSize(14, Axis.HEIGHT)));
         copyToFirstEmpty.setOnAction( e -> {
 
             int findMe = codeFields.indexOf(lastEnteredField);
@@ -506,11 +485,14 @@ public class BHBMainGUI extends Application {
         previewLabelsBHBBox.setAlignment(Pos.CENTER);
     
         previewCopyPane.setMinHeight(50);
-        //previewCopyPane.setMinHeight(DEF_SD.detSize(50, Axis.HEIGHT));
         previewCopyPane.setLeft(copyButtonBHB);
+        BorderPane.setAlignment(copyButtonBHB, Pos.CENTER_LEFT);
         previewCopyPane.setCenter(previewLabelsBHBBox);
         previewCopyPane.setBorder(DEF_BORDER);
         previewCopyPane.setPadding(new Insets(5));
+
+        previewCopyPane.prefWidthProperty().bind(rootPane.widthProperty()); // Dynamic resizing
+        previewCopyPane.prefHeightProperty().bind(rootPane.heightProperty()); //Dynamic resizing
 
         codesBox.setBorder(DEF_BORDER);
         codesBox.setPadding(new Insets(5));
@@ -522,11 +504,25 @@ public class BHBMainGUI extends Application {
 
         colorPickerBox.setAlignment(Pos.CENTER);
         colorPickerBox.setPrefSize(220, 160);
-        //colorPickerBox.setPrefSize(DEF_SD.detSize(220, Axis.WIDTH), DEF_SD.detSize(160, Axis.HEIGHT));
         colorPickerBox.setBorder(DEF_BORDER);
         colorPickerUI.setOnAction(e -> colorCircle.setFill(colorPickerUI.getValue()));
         colorPickerBox.getChildren().addAll(colorCircle, pickerAndCopyButtonBox);
         colorPickerBox.setSpacing(10);
+
+        // Dynamic resizing for BHB Boxes
+        // This is cascading. Each box binds to its parent
+        mainBHBBox.prefHeightProperty().bind(rootPane.heightProperty());
+        mainBHBBox.prefWidthProperty().bind(rootPane.widthProperty());
+
+        codesAndPickerBox.prefHeightProperty().bind(mainBHBBox.heightProperty()); //Dynamic resizing
+        codesAndPickerBox.prefWidthProperty().bind(mainBHBBox.widthProperty()); //Dynamic resizing
+        
+        codesBox.prefHeightProperty().bind(codesAndPickerBox.heightProperty()); //Dynamic resizing
+        codesBox.prefWidthProperty().bind(codesAndPickerBox.widthProperty()); //Dynamic resizing
+        colorPickerBox.prefHeightProperty().bind(codesAndPickerBox.heightProperty()); //Dynamic resizing
+        colorPickerBox.prefWidthProperty().bind(codesAndPickerBox.widthProperty()); //Dynamic resizing
+        nickInputBox.prefHeightProperty().bind(codesAndPickerBox.heightProperty()); //Dynamic resizing
+        nickInputBox.prefWidthProperty().bind(codesAndPickerBox.widthProperty()); //Dynamic resizing
 
         codesAndPickerBox.getChildren().addAll(codesBox, colorPickerBox);
         codesAndPickerBox.setBorder(DEF_BORDER);
@@ -554,10 +550,8 @@ public class BHBMainGUI extends Application {
     private void buildMiscBHB(){
 
         enterNicknameBHB.setPrefWidth(275);
-        //enterNicknameBHB.setPrefWidth(DEF_SD.detSize(275, Axis.WIDTH));
         enterNicknameBHB.textProperty().addListener((observable, oldValue, newValue) -> updatePreviewBHB());
         
-        //colorCircle.setRadius(DEF_SD.detSize(75, Axis.WIDTH));
         colorCircle.setRadius(75);
         colorCircle.setFill(colorPickerUI.getValue());
 
@@ -571,10 +565,8 @@ public class BHBMainGUI extends Application {
     //Factory for code boxes in BHB
     private LimitedTextField makeCodeEnterField(Label codeColorLabel, int id){
 
-        LimitedTextField colorCodeEnterField = new LimitedTextField(true, "[a-fA-F0-9]", 6);
-        //colorCodeEnterField.setPrefWidth(DEF_SD.detSize(75, Axis.WIDTH));
+        LimitedTextField colorCodeEnterField = new LimitedTextField(true, "[a-fA-F0-9]", 6);;
         colorCodeEnterField.setPrefWidth(75);
-        //colorCodeEnterField.setFont(new Font("Arial", DEF_SD.detSize(14, Axis.HEIGHT)));
         colorCodeEnterField.setFont(new Font("Arial", 14));
 
         colorCodeEnterField.pressedProperty().addListener(listener -> lastEnteredField = colorCodeEnterField);
@@ -611,7 +603,6 @@ public class BHBMainGUI extends Application {
         Button upButton = new Button("↑");
         upButton.setTooltip(new Tooltip("Move code up"));
         upButton.setFont(new Font("Arial", 14));
-        //upButton.setFont(new Font("Arial", DEF_SD.detSize(14, Axis.HEIGHT)));
         upButton.setStyle("-fx-font-weight: bold");
         upButton.setOnAction(e -> {
             if(id - 1 > 0 && isHexOk(codeField.getText())){
@@ -626,7 +617,6 @@ public class BHBMainGUI extends Application {
         HBox codeBox = new HBox(codeId, codeField, upButton, codeColorLabel);
         codeBox.setAlignment(Pos.CENTER);
         codeBox.setSpacing(6);
-        //codeBox.setMinSize(DEF_SD.detSize(200, Axis.WIDTH), DEF_SD.detSize(30, Axis.HEIGHT));
         codeBox.setMinSize(200, 30);
 
         logStatic(Level.INFO, "Created codebox with id: " + Integer.toString(id), null);
@@ -638,11 +628,8 @@ public class BHBMainGUI extends Application {
         copyButtonColorscheme.setTooltip(new Tooltip("Copy nickname to clipboard"));
         copyButtonColorscheme.setOnAction(e -> doClipboardCopy());
 
-        HBox chooseScheme = new HBox();
-
         Label prompt = new Label("Choose a scheme: ");
         schemes.setMinWidth(140);
-        //schemes.setMinWidth(DEF_SD.detSize(140, Axis.WIDTH));
 
         schemes.valueProperty().addListener((observable, oldValue, newValue) -> {
             if(enterNicknameColorscheme.getText().length() > 0){
@@ -652,24 +639,10 @@ public class BHBMainGUI extends Application {
             }  
         });
 
-        chooseScheme.getChildren().addAll(prompt, schemes);
-        chooseScheme.setBorder(DEF_BORDER);
-        chooseScheme.setPadding(new Insets(5));
-        chooseScheme.setAlignment(Pos.CENTER);
-        chooseScheme.setSpacing(3);
-
-        HBox enternick = new HBox();
-        Label prompt1 = new Label("Enter text: ");
-
         enterNicknameColorscheme.setPrefWidth(275);
-        //enterNicknameColorscheme.setPrefWidth(DEF_SD.detSize(275, Axis.WIDTH));
         enterNicknameColorscheme.textProperty().addListener((observable, oldValue, newValue) -> {
             if(schemes.getValue() != null) updatePreviewColorscheme();
         });
-        enternick.setBorder(DEF_BORDER);
-        enternick.setPadding(new Insets(5));
-        enternick.setAlignment(Pos.CENTER);
-        enternick.setSpacing(3);
 
         initSchemes();
         reloadSchemes();
@@ -683,17 +656,15 @@ public class BHBMainGUI extends Application {
         nickPreview.setCenter(previewLabelsColorscheme);
         nickPreview.setBottom(copyButtonColorscheme);
         nickPreview.setMinHeight(new Label("L").getHeight() + 10.0);
-        //nickPreview.setMinHeight(DEF_SD.detSize(new Label("L").getHeight() + 10.0, Axis.HEIGHT));
         nickPreview.setPadding(new Insets(5));
         BorderPane.setAlignment(previewLabel, Pos.CENTER);
         BorderPane.setAlignment(copyButtonColorscheme, Pos.CENTER);
 
-        enternick.getChildren().addAll(prompt1, enterNicknameColorscheme);
 
         //Add everything for the "second scene" to the VBox
-        mainColorschemeBox.setTop(enternick);
+        mainColorschemeBox.setTop(new BHBHBox(new Label("Enter text: "), enterNicknameColorscheme));
         mainColorschemeBox.setCenter(nickPreview);
-        mainColorschemeBox.setBottom(chooseScheme);
+        mainColorschemeBox.setBottom(new BHBHBox(prompt, schemes));
 
         logStatic(Level.INFO, "ColorScheme init completed.", null);
     }
@@ -842,6 +813,7 @@ public class BHBMainGUI extends Application {
         for(LimitedTextField lt : codeFields.stream().filter(lt -> lt.getText().equals("")).collect(Collectors.toList())){
             labelColorPreviews.get(codeFields.indexOf(lt)).setBackground(isLight ? DARK_BACKGROUND : DEF_BACKGROUND);
         }
+        darkMode.setValue(isLight ? "On" : "Off");
         currentTheme.setValue(isLight ? "DARK" : "LIGHT");
         copyButtonBHB.setGraphic(new CopyButtonIcon(!isLight));
         copyButtonColorscheme.setGraphic(new CopyButtonIcon(!isLight));
@@ -852,11 +824,10 @@ public class BHBMainGUI extends Application {
     //======================================================
 
     private void doClipboardCopy(){
-        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
         StringSelection stringSelection = new StringSelection("");
         if(rootPane.getCenter().equals(mainBHBBox) && !currentNickBHB.getValue().equals("")) stringSelection = new StringSelection(currentNickBHB.getValue());
         else if (!currentNickColorScheme.getValue().equals("")) stringSelection = new StringSelection(currentNickColorScheme.getValue());
-        clipboard.setContents(stringSelection, null);
+        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(stringSelection, null);
     }
 
     //Undo changes in the order they were made
@@ -1014,11 +985,7 @@ public class BHBMainGUI extends Application {
             enterNicknameBHB.setText(bReader.readLine().replace("\n", ""));
 
             //Set theme based on config
-            String savedTheme = bReader.readLine();
-            if(savedTheme.equals("DARK")) {
-                changeTheme(mainScene, labelColorPreviews);
-                darkMode.setValue("On");
-            }
+            if(bReader.readLine().equals("DARK")) changeTheme(mainScene, labelColorPreviews);
 
             //Read saved justification priority and set it accordingly
             String savedJustification = bReader.readLine();

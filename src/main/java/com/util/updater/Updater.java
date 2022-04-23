@@ -26,12 +26,12 @@ public class Updater {
         
         //If the exe exists, replace it
         if(new File(System.getProperty("user.dir") + "/BHB.exe").exists()){
-            res = cmdExec.executeCommandWindows(baseCmd + "/BHB.exe & BHB.exe");
+            res += cmdExec.executeCommandWindows(baseCmd + "/BHB.exe & BHB.exe");
         }
         
         //If the jar exists, replace it
         if(new File(System.getProperty("user.dir") + "/BHB.jar").exists()){
-            res = cmdExec.executeCommandWindows(baseCmd + "/BHB.jar & java -jar BHB.jar");
+            res += cmdExec.executeCommandWindows(baseCmd + "/BHB.jar & java -jar BHB.jar");
         }
 
         return res;
