@@ -11,6 +11,7 @@ import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.*;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
@@ -140,7 +141,7 @@ public class BHBMainGUI extends Application {
     private static final Menu menuTools = new Menu("Tools");
     private static final Menu menuHelp = new Menu("Help");
      
-    private final VBox codesBox = new VBox(makeCodeBox(1), makeCodeBox(2), makeCodeBox(3), makeCodeBox(4), makeCodeBox(5), makeCodeBox(6), clearAllCodes);
+    private VBox codesBox = new VBox();
     private final VBox colorPickerBox = new VBox();
 
     private final Circle colorCircle = new Circle();
@@ -217,7 +218,7 @@ public class BHBMainGUI extends Application {
         rootPane.setCenter(rootPane.getCenter() == null ? mainBHBBox : rootPane.getCenter());
         mainScene = new Scene(rootPane);
 
-        stage.setMinHeight(400);
+        stage.setMinHeight(415);
         stage.setMinWidth(436);
         stage.setScene(mainScene);
         stage.setTitle("Hex Blender");
@@ -482,6 +483,8 @@ public class BHBMainGUI extends Application {
      */
     private void buildBoxesBHB(){
 
+        codesBox = new VBox(makeCodeBox(1), makeCodeBox(2), makeCodeBox(3), makeCodeBox(4), makeCodeBox(5), makeCodeBox(6), clearAllCodes);
+
         previewLabelsBHBBox.setAlignment(Pos.CENTER);
     
         previewCopyPane.setMinHeight(50);
@@ -516,9 +519,10 @@ public class BHBMainGUI extends Application {
 
         codesAndPickerBox.prefHeightProperty().bind(mainBHBBox.heightProperty()); //Dynamic resizing
         codesAndPickerBox.prefWidthProperty().bind(mainBHBBox.widthProperty()); //Dynamic resizing
-        
+
         codesBox.prefHeightProperty().bind(codesAndPickerBox.heightProperty()); //Dynamic resizing
         codesBox.prefWidthProperty().bind(codesAndPickerBox.widthProperty()); //Dynamic resizing
+        codesBox.spacingProperty().bind(codesAndPickerBox.heightProperty().divide(259).multiply(5)); //Dynamic resizing
         colorPickerBox.prefHeightProperty().bind(codesAndPickerBox.heightProperty()); //Dynamic resizing
         colorPickerBox.prefWidthProperty().bind(codesAndPickerBox.widthProperty()); //Dynamic resizing
         nickInputBox.prefHeightProperty().bind(codesAndPickerBox.heightProperty()); //Dynamic resizing
@@ -552,7 +556,7 @@ public class BHBMainGUI extends Application {
         enterNicknameBHB.setPrefWidth(275);
         enterNicknameBHB.textProperty().addListener((observable, oldValue, newValue) -> updatePreviewBHB());
         
-        colorCircle.setRadius(75);
+        colorCircle.radiusProperty().bind(colorPickerBox.widthProperty().divide(3));
         colorCircle.setFill(colorPickerUI.getValue());
 
         logStatic(Level.INFO, "BHB misc. init completed.", null);
@@ -618,6 +622,21 @@ public class BHBMainGUI extends Application {
         codeBox.setAlignment(Pos.CENTER);
         codeBox.setSpacing(6);
         codeBox.setMinSize(200, 30);
+
+        //Dynamic resizing for codeBoxes
+        codeBox.prefHeightProperty().bind(codesBox.heightProperty().divide(7)); //Dynamic resizing
+        codeBox.prefWidthProperty().bind(codesBox.widthProperty()); //Dynamic resizing
+
+        codeId.prefWidthProperty().bind(codeBox.widthProperty().divide(200).multiply(44)); //Dynamic resizing
+        codeId.prefHeightProperty().bind(codeBox.heightProperty().divide(7));
+        codeColorLabel.prefWidthProperty().bind(codeBox.widthProperty().divide(200).multiply(25)); //Dynamic resizing
+        codeColorLabel.prefHeightProperty().bind(codeBox.heightProperty().divide(7));
+        codeField.prefWidthProperty().bind(codeBox.widthProperty().divide(200).multiply(75)); //Dynamic resizing
+        codeField.prefHeightProperty().bind(codeBox.heightProperty().divide(7));
+        upButton.prefWidthProperty().bind(codeBox.widthProperty().divide(200).multiply(27)); //Dynamic resizing
+        upButton.prefHeightProperty().bind(codeBox.heightProperty().divide(7));
+        clearAllCodes.prefWidthProperty().bind(codeBox.widthProperty().divide(3));
+        clearAllCodes.prefHeightProperty().bind(codeBox.heightProperty().divide(7));
 
         logStatic(Level.INFO, "Created codebox with id: " + Integer.toString(id), null);
         return codeBox;
