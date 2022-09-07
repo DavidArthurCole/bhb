@@ -1,3 +1,5 @@
+⚠️ **This project is now deprecated, in favor of [/bhb-webapp/](https://github.com/DavidArthurCole/bhb-webapp/), which will eventually mimic this application in an HTML/JS App to minimize the necessity to download files. The web-app can be found [here](https://davidarthurcole.github.io/bhb-webapp/).** ⚠️
+
 This project was made to allow the creation of customized nicknames for players on Minecraft Java Edition 1.16+ servers using [Essentials/EssentialsX](https://essentialsx.net/) and `/nick` <br>
 
 Running on Windows:
